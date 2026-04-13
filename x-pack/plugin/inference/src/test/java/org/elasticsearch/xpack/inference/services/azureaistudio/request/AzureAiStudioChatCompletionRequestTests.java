@@ -45,8 +45,9 @@ public class AzureAiStudioChatCompletionRequestTests extends ESTestCase {
         validateRequestApiKey(httpPost, AzureAiStudioProvider.OPENAI, AzureAiStudioEndpointType.TOKEN, "apikey");
 
         var requestMap = entityAsMap(httpPost.getEntity().getContent());
-        assertThat(requestMap, aMapWithSize(1));
+        assertThat(requestMap, aMapWithSize(2));
         assertThat(requestMap.get("messages"), is(List.of(Map.of("role", "user", "content", "abcd"))));
+        assertThat(requestMap.get("parameters"), is(getParameterMap(null, null, null, null)));
     }
 
     public void testCreateRequest_WithOpenAiProviderTokenEndpoint_WithTemperatureParam() throws IOException {
@@ -155,8 +156,9 @@ public class AzureAiStudioChatCompletionRequestTests extends ESTestCase {
         validateRequestApiKey(httpPost, AzureAiStudioProvider.COHERE, AzureAiStudioEndpointType.TOKEN, "apikey");
 
         var requestMap = entityAsMap(httpPost.getEntity().getContent());
-        assertThat(requestMap, aMapWithSize(1));
+        assertThat(requestMap, aMapWithSize(2));
         assertThat(requestMap.get("messages"), is(List.of(Map.of("role", "user", "content", "abcd"))));
+        assertThat(requestMap.get("parameters"), is(getParameterMap(null, null, null, null)));
     }
 
     public void testCreateRequest_WithCohereProviderTokenEndpoint_WithTemperatureParam() throws IOException {
@@ -269,8 +271,9 @@ public class AzureAiStudioChatCompletionRequestTests extends ESTestCase {
 
         @SuppressWarnings("unchecked")
         var input_data = (Map<String, Object>) requestMap.get("input_data");
-        assertThat(input_data, aMapWithSize(1));
+        assertThat(input_data, aMapWithSize(2));
         assertThat(input_data.get("input_string"), is(List.of(Map.of("role", "user", "content", "abcd"))));
+        assertThat(input_data.get("parameters"), is(getParameterMap(null, null, null, null)));
     }
 
     public void testCreateRequest_WithMistralProviderRealtimeEndpoint_WithTemperatureParam() throws IOException {
@@ -424,6 +427,9 @@ public class AzureAiStudioChatCompletionRequestTests extends ESTestCase {
         }
         if (maxNewTokens != null) {
             map.put("max_new_tokens", maxNewTokens);
+        } else {
+            // Confirm we use the default max_new_tokens value
+            map.put("max_new_tokens", 64);
         }
         return map;
     }

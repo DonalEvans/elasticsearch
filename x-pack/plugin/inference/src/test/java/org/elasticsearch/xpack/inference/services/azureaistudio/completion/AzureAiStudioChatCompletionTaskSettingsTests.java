@@ -23,10 +23,12 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.elasticsearch.common.xcontent.XContentHelper.stripWhitespace;
 import static org.elasticsearch.xpack.inference.services.azureaistudio.AzureAiStudioConstants.DO_SAMPLE_FIELD;
 import static org.elasticsearch.xpack.inference.services.azureaistudio.AzureAiStudioConstants.MAX_NEW_TOKENS_FIELD;
 import static org.elasticsearch.xpack.inference.services.azureaistudio.AzureAiStudioConstants.TEMPERATURE_FIELD;
 import static org.elasticsearch.xpack.inference.services.azureaistudio.AzureAiStudioConstants.TOP_P_FIELD;
+import static org.elasticsearch.xpack.inference.services.azureaistudio.completion.AzureAiStudioChatCompletionTaskSettings.DEFAULT_MAX_NEW_TOKENS;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 
@@ -125,12 +127,12 @@ public class AzureAiStudioChatCompletionTaskSettingsTests extends AbstractBWCWir
         );
     }
 
-    public void testFromMap_WithNoValues_DoesNotThrowException() {
-        var taskMap = AzureAiStudioChatCompletionTaskSettings.fromMap(new HashMap<String, Object>(Map.of()));
+    public void testFromMap_WithNoValues_UsesDefaultValues() {
+        var taskMap = AzureAiStudioChatCompletionTaskSettings.fromMap(new HashMap<>());
         assertNull(taskMap.temperature());
         assertNull(taskMap.topP());
         assertNull(taskMap.doSample());
-        assertNull(taskMap.maxNewTokens());
+        assertThat(taskMap.maxNewTokens(), is(64));
     }
 
     public void testOverrideWith_KeepsOriginalValuesWithOverridesAreNull() {
@@ -170,14 +172,16 @@ public class AzureAiStudioChatCompletionTaskSettingsTests extends AbstractBWCWir
         MatcherAssert.assertThat(overriddenTaskSettings, is(new AzureAiStudioChatCompletionTaskSettings(1.0, 2.0, true, 128)));
     }
 
-    public void testToXContent_WithoutParameters() throws IOException {
+    public void testToXContent_WithoutParameters_WritesDefaultValues() throws IOException {
         var settings = AzureAiStudioChatCompletionTaskSettings.fromMap(getTaskSettingsMap(null, null, null, null));
 
         XContentBuilder builder = XContentFactory.contentBuilder(XContentType.JSON);
         settings.toXContent(builder, null);
         String xContentResult = Strings.toString(builder);
 
-        assertThat(xContentResult, is("{}"));
+        assertThat(xContentResult, is(stripWhitespace("""
+            {"max_new_tokens":64}
+            """)));
     }
 
     public void testToXContent_WithParameters() throws IOException {
@@ -238,7 +242,15 @@ public class AzureAiStudioChatCompletionTaskSettingsTests extends AbstractBWCWir
             case 0 -> temperature = randomValueOtherThan(temperature, ESTestCase::randomOptionalDouble);
             case 1 -> topP = randomValueOtherThan(topP, ESTestCase::randomOptionalDouble);
             case 2 -> doSample = doSample == null ? randomBoolean() : doSample == false;
-            case 3 -> maxNewTokens = randomValueOtherThan(maxNewTokens, ESTestCase::randomNonNegativeIntOrNull);
+            case 3 -> {
+                if (maxNewTokens.equals(DEFAULT_MAX_NEW_TOKENS)) {
+                    // Using null for max new tokens will result in the actual value being DEFAULT_MAX_NEW_TOKENS, which does not mutate
+                    // the instance
+                    maxNewTokens = randomValueOtherThan(maxNewTokens, ESTestCase::randomNonNegativeInt);
+                } else {
+                    maxNewTokens = randomValueOtherThan(maxNewTokens, ESTestCase::randomNonNegativeIntOrNull);
+                }
+            }
             default -> throw new AssertionError("Illegal randomisation branch");
         }
         return new AzureAiStudioChatCompletionTaskSettings(temperature, topP, doSample, maxNewTokens);

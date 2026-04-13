@@ -97,14 +97,14 @@ public class AzureAiStudioChatCompletionTaskSettings implements TaskSettings {
         this.temperature = temperature;
         this.topP = topP;
         this.doSample = doSample;
-        this.maxNewTokens = maxNewTokens;
+        this.maxNewTokens = Objects.requireNonNullElse(maxNewTokens, DEFAULT_MAX_NEW_TOKENS);
     }
 
     public AzureAiStudioChatCompletionTaskSettings(StreamInput in) throws IOException {
         this.temperature = in.readOptionalDouble();
         this.topP = in.readOptionalDouble();
         this.doSample = in.readOptionalBoolean();
-        this.maxNewTokens = in.readOptionalInt();
+        this.maxNewTokens = Objects.requireNonNullElse(in.readOptionalInt(), DEFAULT_MAX_NEW_TOKENS);
     }
 
     private final Double temperature;
@@ -126,10 +126,6 @@ public class AzureAiStudioChatCompletionTaskSettings implements TaskSettings {
 
     public Integer maxNewTokens() {
         return maxNewTokens;
-    }
-
-    public boolean areAnyParametersAvailable() {
-        return temperature != null && topP != null && doSample != null && maxNewTokens != null;
     }
 
     @Override

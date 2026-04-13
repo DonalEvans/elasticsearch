@@ -156,8 +156,11 @@ public class AzureAiStudioActionAndCreatorTests extends ESTestCase {
 
             final MockRequest request = webServer.requests().get(0);
             final var requestMap = entityAsMap(request.getBody());
-            assertThat(requestMap.size(), is(1));
+            assertThat(requestMap.size(), is(2));
             assertThat(requestMap.get("messages"), is(List.of(Map.of("role", "user", "content", "abc"))));
+            // Confirm we use the default max_new_tokens value
+            assertThat(requestMap.get("parameters"), is(Map.of("max_new_tokens", 64)));
+
         }
     }
 
