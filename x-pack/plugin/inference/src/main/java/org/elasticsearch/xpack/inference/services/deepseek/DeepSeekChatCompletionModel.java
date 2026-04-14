@@ -7,37 +7,19 @@
 
 package org.elasticsearch.xpack.inference.services.deepseek;
 
-import org.elasticsearch.TransportVersion;
-import org.elasticsearch.common.ValidationException;
-import org.elasticsearch.common.io.stream.NamedWriteableRegistry;
-import org.elasticsearch.common.io.stream.StreamInput;
-import org.elasticsearch.common.io.stream.StreamOutput;
 import org.elasticsearch.common.settings.SecureString;
 import org.elasticsearch.core.Nullable;
 import org.elasticsearch.inference.EmptyTaskSettings;
 import org.elasticsearch.inference.Model;
 import org.elasticsearch.inference.ModelConfigurations;
 import org.elasticsearch.inference.ModelSecrets;
-import org.elasticsearch.inference.ServiceSettings;
 import org.elasticsearch.inference.TaskType;
-import org.elasticsearch.xcontent.ToXContentObject;
-import org.elasticsearch.xcontent.XContentBuilder;
 import org.elasticsearch.xpack.inference.services.settings.DefaultSecretSettings;
 import org.elasticsearch.xpack.inference.services.settings.RateLimitSettings;
 
-import java.io.IOException;
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-
-import static org.elasticsearch.xpack.inference.services.ServiceFields.MODEL_ID;
-import static org.elasticsearch.xpack.inference.services.ServiceFields.URL;
-import static org.elasticsearch.xpack.inference.services.ServiceUtils.createOptionalUri;
-import static org.elasticsearch.xpack.inference.services.ServiceUtils.extractOptionalString;
-import static org.elasticsearch.xpack.inference.services.ServiceUtils.extractRequiredSecureString;
-import static org.elasticsearch.xpack.inference.services.ServiceUtils.extractRequiredString;
 
 /**
  * Design notes:
@@ -63,94 +45,51 @@ public class DeepSeekChatCompletionModel extends Model {
     private static final RateLimitSettings RATE_LIMIT_SETTINGS = new RateLimitSettings(Integer.MAX_VALUE);
 
     private static final URI DEFAULT_URI = URI.create("https://api.deepseek.com/chat/completions");
-    private final DeepSeekServiceSettings serviceSettings;
-    @Nullable
-    private final DefaultSecretSettings secretSettings;
 
-    public static List<NamedWriteableRegistry.Entry> namedWriteables() {
-        return List.of(new NamedWriteableRegistry.Entry(ServiceSettings.class, DeepSeekServiceSettings.NAME, DeepSeekServiceSettings::new));
-    }
-
-    public static DeepSeekChatCompletionModel createFromNewInput(
+    public DeepSeekChatCompletionModel(
         String inferenceEntityId,
         TaskType taskType,
         String service,
-        Map<String, Object> serviceSettingsMap
+        Map<String, Object> serviceSettings,
+        @Nullable Map<String, Object> secrets
     ) {
-        var validationException = new ValidationException();
-
-        var model = extractRequiredString(serviceSettingsMap, MODEL_ID, ModelConfigurations.SERVICE_SETTINGS, validationException);
-        var uri = createOptionalUri(
-            extractOptionalString(serviceSettingsMap, URL, ModelConfigurations.SERVICE_SETTINGS, validationException)
+        this(
+            inferenceEntityId,
+            taskType,
+            service,
+            DeepSeekServiceSettings.fromMap(serviceSettings),
+            DefaultSecretSettings.fromMap(secrets)
         );
-        var secureApiToken = extractRequiredSecureString(
-            serviceSettingsMap,
-            "api_key",
-            ModelConfigurations.SERVICE_SETTINGS,
-            validationException
-        );
-
-        validationException.throwIfValidationErrorsExist();
-
-        var serviceSettings = new DeepSeekServiceSettings(model, uri);
-        var taskSettings = new EmptyTaskSettings();
-        var secretSettings = new DefaultSecretSettings(secureApiToken);
-        var modelConfigurations = new ModelConfigurations(inferenceEntityId, taskType, service, serviceSettings, taskSettings);
-        return new DeepSeekChatCompletionModel(serviceSettings, secretSettings, modelConfigurations, new ModelSecrets(secretSettings));
     }
 
-    public static DeepSeekChatCompletionModel readFromStorage(
+    // Should only be used directly for testing
+    DeepSeekChatCompletionModel(
         String inferenceEntityId,
         TaskType taskType,
         String service,
-        Map<String, Object> serviceSettingsMap,
-        Map<String, Object> secrets
-    ) {
-        var validationException = new ValidationException();
-
-        var model = extractRequiredString(serviceSettingsMap, MODEL_ID, ModelConfigurations.SERVICE_SETTINGS, validationException);
-        var uri = createOptionalUri(
-            extractOptionalString(serviceSettingsMap, "url", ModelConfigurations.SERVICE_SETTINGS, validationException)
-        );
-
-        validationException.throwIfValidationErrorsExist();
-
-        var serviceSettings = new DeepSeekServiceSettings(model, uri);
-        var taskSettings = new EmptyTaskSettings();
-        var secretSettings = DefaultSecretSettings.fromMap(secrets);
-        var modelConfigurations = new ModelConfigurations(inferenceEntityId, taskType, service, serviceSettings, taskSettings);
-        return new DeepSeekChatCompletionModel(serviceSettings, secretSettings, modelConfigurations, new ModelSecrets(secretSettings));
-    }
-
-    private DeepSeekChatCompletionModel(
         DeepSeekServiceSettings serviceSettings,
-        @Nullable DefaultSecretSettings secretSettings,
-        ModelConfigurations configurations,
-        ModelSecrets secrets
+        @Nullable DefaultSecretSettings secretSettings
     ) {
-        super(configurations, secrets);
-        this.serviceSettings = serviceSettings;
-        this.secretSettings = secretSettings;
+        this(
+            new ModelConfigurations(inferenceEntityId, taskType, service, serviceSettings, EmptyTaskSettings.INSTANCE),
+            new ModelSecrets(secretSettings)
+        );
     }
 
     public DeepSeekChatCompletionModel(ModelConfigurations modelConfigurations, ModelSecrets modelSecrets) {
-        this(
-            (DeepSeekServiceSettings) modelConfigurations.getServiceSettings(),
-            (DefaultSecretSettings) modelSecrets.getSecretSettings(),
-            modelConfigurations,
-            modelSecrets
-        );
+        super(modelConfigurations, modelSecrets);
     }
 
     public Optional<SecureString> apiKey() {
-        return Optional.ofNullable(secretSettings).map(DefaultSecretSettings::apiKey);
+        return Optional.ofNullable(((DefaultSecretSettings) getSecretSettings())).map(DefaultSecretSettings::apiKey);
     }
 
     public String model() {
-        return serviceSettings.modelId();
+        return getConfigurations().getServiceSettings().modelId();
     }
 
     public URI uri() {
+        var serviceSettings = (DeepSeekServiceSettings) getServiceSettings();
         return serviceSettings.uri() != null ? serviceSettings.uri() : DEFAULT_URI;
     }
 
@@ -162,53 +101,4 @@ public class DeepSeekChatCompletionModel extends Model {
         return RATE_LIMIT_SETTINGS;
     }
 
-    public record DeepSeekServiceSettings(String modelId, URI uri) implements ServiceSettings {
-        private static final String NAME = "deep_seek_service_settings";
-        private static final TransportVersion ML_INFERENCE_DEEPSEEK = TransportVersion.fromName("ml_inference_deepseek");
-
-        public DeepSeekServiceSettings {
-            Objects.requireNonNull(modelId);
-        }
-
-        DeepSeekServiceSettings(StreamInput in) throws IOException {
-            this(in.readString(), in.readOptional(url -> URI.create(url.readString())));
-        }
-
-        @Override
-        public String getWriteableName() {
-            return NAME;
-        }
-
-        @Override
-        public TransportVersion getMinimalSupportedVersion() {
-            assert false : "should never be called when supportsVersion is used";
-            return ML_INFERENCE_DEEPSEEK;
-        }
-
-        @Override
-        public boolean supportsVersion(TransportVersion version) {
-            return version.supports(ML_INFERENCE_DEEPSEEK);
-        }
-
-        @Override
-        public void writeTo(StreamOutput out) throws IOException {
-            out.writeString(modelId);
-            out.writeOptionalString(uri != null ? uri.toString() : null);
-        }
-
-        @Override
-        public ToXContentObject getFilteredXContentObject() {
-            return this;
-        }
-
-        @Override
-        public XContentBuilder toXContent(XContentBuilder builder, Params params) throws IOException {
-            builder.startObject();
-            builder.field(MODEL_ID, modelId);
-            if (uri != null) {
-                builder.field(URL, uri.toString());
-            }
-            return builder.endObject();
-        }
-    }
 }

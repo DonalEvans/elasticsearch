@@ -188,12 +188,10 @@ public class InferenceCrudIT extends InferenceBaseRestTest {
             {
                 "service": "openai",
                 "service_settings": {
+                    "model_id": "text-embedding-ada-002",
                     "api_key": "XXXX",
                     "dimensions": 128,
                     "similarity": "cosine"
-                },
-                "task_settings": {
-                   "model": "text-embedding-ada-002"
                 }
             }
             """;
