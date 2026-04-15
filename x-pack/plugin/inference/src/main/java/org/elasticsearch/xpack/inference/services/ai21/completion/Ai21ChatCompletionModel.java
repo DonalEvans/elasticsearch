@@ -99,11 +99,6 @@ public class Ai21ChatCompletionModel extends Ai21Model {
 
     public Ai21ChatCompletionModel(ModelConfigurations modelConfigurations, ModelSecrets modelSecrets) {
         super(modelConfigurations, modelSecrets);
-        setPropertiesFromServiceSettings((Ai21ChatCompletionServiceSettings) modelConfigurations.getServiceSettings());
-    }
-
-    private void setPropertiesFromServiceSettings(Ai21ChatCompletionServiceSettings serviceSettings) {
-        this.rateLimitSettings = serviceSettings.rateLimitSettings();
         setEndpointUrl();
     }
 

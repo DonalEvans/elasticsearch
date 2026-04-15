@@ -11,6 +11,7 @@ import org.elasticsearch.inference.ModelConfigurations;
 import org.elasticsearch.inference.ModelSecrets;
 import org.elasticsearch.inference.ServiceSettings;
 import org.elasticsearch.xpack.inference.services.RateLimitGroupingModel;
+import org.elasticsearch.xpack.inference.services.ai21.completion.Ai21ChatCompletionServiceSettings;
 import org.elasticsearch.xpack.inference.services.settings.DefaultSecretSettings;
 import org.elasticsearch.xpack.inference.services.settings.RateLimitSettings;
 
@@ -24,7 +25,6 @@ import java.util.Objects;
  */
 public abstract class Ai21Model extends RateLimitGroupingModel {
     protected URI uri;
-    protected RateLimitSettings rateLimitSettings;
 
     protected Ai21Model(ModelConfigurations configurations, ModelSecrets secrets) {
         super(configurations, secrets);
@@ -40,7 +40,7 @@ public abstract class Ai21Model extends RateLimitGroupingModel {
 
     @Override
     public RateLimitSettings rateLimitSettings() {
-        return this.rateLimitSettings;
+        return ((Ai21ChatCompletionServiceSettings) getServiceSettings()).rateLimitSettings();
     }
 
     @Override

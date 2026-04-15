@@ -42,7 +42,6 @@ import org.elasticsearch.xpack.core.inference.results.DenseEmbeddingFloatResults
 import org.elasticsearch.xpack.core.inference.results.SparseEmbeddingResults;
 import org.elasticsearch.xpack.core.inference.results.SparseEmbeddingResultsTests;
 import org.elasticsearch.xpack.inference.InputTypeTests;
-import org.elasticsearch.xpack.inference.TaskTypeTests;
 import org.elasticsearch.xpack.inference.external.action.ExecutableAction;
 import org.elasticsearch.xpack.inference.external.http.HttpClientManager;
 import org.elasticsearch.xpack.inference.external.http.sender.HttpRequestSender;
@@ -65,11 +64,11 @@ import org.elasticsearch.xpack.inference.services.alibabacloudsearch.sparse.Alib
 import org.elasticsearch.xpack.inference.services.alibabacloudsearch.sparse.AlibabaCloudSearchSparseModelTests;
 import org.elasticsearch.xpack.inference.services.alibabacloudsearch.sparse.AlibabaCloudSearchSparseServiceSettingsTests;
 import org.elasticsearch.xpack.inference.services.alibabacloudsearch.sparse.AlibabaCloudSearchSparseTaskSettingsTests;
-import org.elasticsearch.xpack.inference.services.openai.completion.OpenAiChatCompletionModelTests;
 import org.junit.After;
 import org.junit.Before;
 
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +81,7 @@ import static org.elasticsearch.xpack.inference.Utils.getPersistedConfigMap;
 import static org.elasticsearch.xpack.inference.Utils.inferenceUtilityExecutors;
 import static org.elasticsearch.xpack.inference.Utils.mockClusterServiceEmpty;
 import static org.elasticsearch.xpack.inference.services.ServiceComponentsTests.createWithEmptySettings;
+import static org.elasticsearch.xpack.inference.services.ServiceFields.SIMILARITY;
 import static org.elasticsearch.xpack.inference.services.settings.DefaultSecretSettingsTests.getSecretSettingsMap;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.empty;
@@ -353,43 +353,6 @@ public class AlibabaCloudSearchServiceTests extends InferenceServiceTestCase {
             assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getWorkspaceName(), is(WORKSPACE_NAME_VALUE));
             assertThat(embeddingsModel.getConfigurations().getChunkingSettings(), instanceOf(ChunkingSettings.class));
             assertThat(embeddingsModel.getSecretSettings().apiKey().toString(), is(API_KEY_VALUE));
-        }
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_InvalidModelProvided() throws IOException {
-        var senderFactory = HttpRequestSenderTests.createSenderFactory(threadPool, clientManager);
-
-        try (var service = new AlibabaCloudSearchService(senderFactory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            var model = OpenAiChatCompletionModelTests.createCompletionModel(
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10)
-            );
-            assertThrows(
-                ElasticsearchStatusException.class,
-                () -> { service.updateModelWithEmbeddingDetails(model, randomNonNegativeInt()); }
-            );
-        }
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_UpdatesEmbeddingSizeAndSimilarity() throws IOException {
-        var senderFactory = HttpRequestSenderTests.createSenderFactory(threadPool, clientManager);
-        try (var service = new AlibabaCloudSearchService(senderFactory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            var embeddingSize = randomNonNegativeInt();
-            var model = AlibabaCloudSearchEmbeddingsModelTests.createModel(
-                randomAlphaOfLength(10),
-                TaskTypeTests.randomTaskTypeOtherThanAny(),
-                AlibabaCloudSearchEmbeddingsServiceSettingsTests.createRandom(),
-                AlibabaCloudSearchEmbeddingsTaskSettingsTests.createRandom(),
-                null
-            );
-
-            Model updatedModel = service.updateModelWithEmbeddingDetails(model, embeddingSize);
-
-            assertEquals(SimilarityMeasure.DOT_PRODUCT, updatedModel.getServiceSettings().similarity());
-            assertEquals(embeddingSize, updatedModel.getServiceSettings().dimensions().intValue());
         }
     }
 
@@ -792,7 +755,7 @@ public class AlibabaCloudSearchServiceTests extends InferenceServiceTestCase {
     @Override
     public InferenceService createInferenceService() {
         return new AlibabaCloudSearchService(
-            mock(HttpRequestSender.Factory.class),
+            HttpRequestSenderTests.createSenderFactory(threadPool, clientManager),
             createWithEmptySettings(threadPool),
             mockClusterServiceEmpty()
         );
@@ -801,6 +764,36 @@ public class AlibabaCloudSearchServiceTests extends InferenceServiceTestCase {
     @Override
     protected void assertRerankerWindowSize(RerankingInferenceService rerankingInferenceService) {
         assertThat(rerankingInferenceService.rerankerWindowSize("any model"), is(5500));
+    }
+
+    @Override
+    public Model createEmbeddingModel(SimilarityMeasure similarity) {
+        var serviceSettingsMap = AlibabaCloudSearchEmbeddingsServiceSettingsTests.getServiceSettingsMap(
+            SERVICE_ID_VALUE,
+            HOST_VALUE,
+            WORKSPACE_NAME_VALUE
+        );
+        serviceSettingsMap.put(SIMILARITY, similarity == null ? null : similarity.toString());
+        return new AlibabaCloudSearchEmbeddingsModel(
+            "modelId",
+            TaskType.TEXT_EMBEDDING,
+            AlibabaCloudSearchService.NAME,
+            serviceSettingsMap,
+            null,
+            null,
+            null,
+            ConfigurationParseContext.REQUEST
+        );
+    }
+
+    @Override
+    public void testUpdateModelWithEmbeddingDetails_NonNullSimilarityInOriginalModel_KeepsSimilarity() {
+        // TODO: due to https://github.com/elastic/elasticsearch/issues/146306, this test must be skipped for AlibabaCloudSearch
+    }
+
+    @Override
+    public EnumSet<TaskType> expectedStreamingTasks() {
+        return EnumSet.noneOf(TaskType.class);
     }
 
     public void testBuildModelFromConfigAndSecrets_TextEmbedding() throws IOException {

@@ -51,7 +51,6 @@ import org.elasticsearch.xpack.core.inference.results.ChunkedInferenceEmbedding;
 import org.elasticsearch.xpack.core.inference.results.DenseEmbeddingFloatResults;
 import org.elasticsearch.xpack.core.inference.results.UnifiedChatCompletionException;
 import org.elasticsearch.xpack.inference.external.http.HttpClientManager;
-import org.elasticsearch.xpack.inference.external.http.sender.HttpRequestSender;
 import org.elasticsearch.xpack.inference.external.http.sender.HttpRequestSenderTests;
 import org.elasticsearch.xpack.inference.logging.ThrottlerManager;
 import org.elasticsearch.xpack.inference.services.InferenceEventsAssertion;
@@ -69,7 +68,6 @@ import org.junit.Before;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -84,13 +82,11 @@ import static org.elasticsearch.xcontent.ToXContent.EMPTY_PARAMS;
 import static org.elasticsearch.xpack.core.inference.chunking.ChunkingSettingsTests.createRandomChunkingSettings;
 import static org.elasticsearch.xpack.core.inference.chunking.ChunkingSettingsTests.createRandomChunkingSettingsMap;
 import static org.elasticsearch.xpack.core.inference.results.DenseEmbeddingFloatResultsTests.buildExpectationFloat;
-import static org.elasticsearch.xpack.inference.Utils.getInvalidModel;
 import static org.elasticsearch.xpack.inference.Utils.getPersistedConfigMap;
 import static org.elasticsearch.xpack.inference.Utils.inferenceUtilityExecutors;
 import static org.elasticsearch.xpack.inference.Utils.mockClusterServiceEmpty;
 import static org.elasticsearch.xpack.inference.external.http.Utils.entityAsMap;
 import static org.elasticsearch.xpack.inference.external.http.Utils.getUrl;
-import static org.elasticsearch.xpack.inference.services.SenderServiceTests.createMockSender;
 import static org.elasticsearch.xpack.inference.services.ServiceComponentsTests.createWithEmptySettings;
 import static org.elasticsearch.xpack.inference.services.azureopenai.AzureOpenAiServiceSettingsTests.TEST_API_VERSION;
 import static org.elasticsearch.xpack.inference.services.azureopenai.AzureOpenAiServiceSettingsTests.TEST_DEPLOYMENT_ID;
@@ -109,12 +105,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.isA;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
 public class AzureOpenAiServiceTests extends InferenceServiceTestCase {
     private static final TimeValue TIMEOUT = new TimeValue(30, TimeUnit.SECONDS);
@@ -956,44 +947,6 @@ public class AzureOpenAiServiceTests extends InferenceServiceTestCase {
         }
     }
 
-    public void testInfer_ThrowsErrorWhenModelIsNotAzureOpenAiModel() throws IOException {
-        var sender = createMockSender();
-
-        var factory = mock(HttpRequestSender.Factory.class);
-        when(factory.createSender()).thenReturn(sender);
-
-        var mockModel = getInvalidModel("model_id", "service_name");
-
-        try (var service = new AzureOpenAiService(factory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            PlainActionFuture<InferenceServiceResults> listener = new PlainActionFuture<>();
-            service.infer(
-                mockModel,
-                null,
-                null,
-                null,
-                List.of(""),
-                false,
-                new HashMap<>(),
-                InputType.INTERNAL_INGEST,
-                InferenceAction.Request.DEFAULT_TIMEOUT,
-                listener
-            );
-
-            var thrownException = expectThrows(ElasticsearchStatusException.class, () -> listener.actionGet(TIMEOUT));
-            assertThat(
-                thrownException.getMessage(),
-                is("The internal model was invalid, please delete the service [service_name] with id [model_id] and add it again.")
-            );
-
-            verify(factory, times(1)).createSender();
-            verify(sender, times(1)).startAsynchronously(any());
-        }
-
-        verify(sender, times(1)).close();
-        verifyNoMoreInteractions(factory);
-        verifyNoMoreInteractions(sender);
-    }
-
     public void testInfer_SendsRequest() throws IOException, URISyntaxException {
         var senderFactory = HttpRequestSenderTests.createSenderFactory(threadPool, clientManager);
 
@@ -1059,51 +1012,6 @@ public class AzureOpenAiServiceTests extends InferenceServiceTestCase {
             assertThat(requestMap.get("input"), Matchers.is(List.of("abc")));
             assertThat(requestMap.get(ROLE_VALUE), Matchers.is(ROLE_VALUE));
             assertThat(requestMap.get("input_type"), Matchers.is("internal_ingest"));
-        }
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_InvalidModelProvided() throws IOException {
-        var senderFactory = HttpRequestSenderTests.createSenderFactory(threadPool, clientManager);
-
-        try (var service = new AzureOpenAiService(senderFactory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            var model = AzureOpenAiCompletionModelTests.createModelWithRandomValues(threadPool);
-            assertThrows(ElasticsearchStatusException.class, () -> service.updateModelWithEmbeddingDetails(model, randomNonNegativeInt()));
-        }
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_NullSimilarityInOriginalModel() throws IOException {
-        testUpdateModelWithEmbeddingDetails_Successful(null);
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_NonNullSimilarityInOriginalModel() throws IOException {
-        testUpdateModelWithEmbeddingDetails_Successful(randomFrom(SimilarityMeasure.values()));
-    }
-
-    private void testUpdateModelWithEmbeddingDetails_Successful(SimilarityMeasure similarityMeasure) throws IOException {
-        var senderFactory = HttpRequestSenderTests.createSenderFactory(threadPool, clientManager);
-
-        try (var service = new AzureOpenAiService(senderFactory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            var embeddingSize = randomNonNegativeInt();
-            var model = AzureOpenAiEmbeddingsModelTests.createModel(
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                randomNonNegativeInt(),
-                randomBoolean(),
-                randomNonNegativeInt(),
-                similarityMeasure,
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                threadPool
-            );
-
-            Model updatedModel = service.updateModelWithEmbeddingDetails(model, embeddingSize);
-
-            SimilarityMeasure expectedSimilarityMeasure = similarityMeasure == null ? SimilarityMeasure.DOT_PRODUCT : similarityMeasure;
-            assertEquals(expectedSimilarityMeasure, updatedModel.getServiceSettings().similarity());
-            assertEquals(embeddingSize, updatedModel.getServiceSettings().dimensions().intValue());
         }
     }
 
@@ -1752,16 +1660,9 @@ public class AzureOpenAiServiceTests extends InferenceServiceTestCase {
         }
     }
 
-    public void testSupportsStreaming() throws IOException {
-        try (var service = new AzureOpenAiService(mock(), createWithEmptySettings(mock()), mockClusterServiceEmpty())) {
-            assertThat(service.supportedStreamingTasks(), is(EnumSet.of(TaskType.COMPLETION, TaskType.CHAT_COMPLETION)));
-            assertFalse(service.canStream(TaskType.ANY));
-        }
-    }
-
     private AzureOpenAiService createAzureOpenAiService() {
         return new AzureOpenAiService(
-            mock(HttpRequestSender.Factory.class),
+            HttpRequestSenderTests.createSenderFactory(threadPool, clientManager),
             createWithEmptySettings(threadPool),
             mockClusterServiceEmpty()
         );
@@ -1770,6 +1671,24 @@ public class AzureOpenAiServiceTests extends InferenceServiceTestCase {
     @Override
     public InferenceService createInferenceService() {
         return createAzureOpenAiService();
+    }
+
+    @Override
+    public Model createEmbeddingModel(SimilarityMeasure similarity) {
+        return AzureOpenAiEmbeddingsModelTests.createModel(
+            randomAlphaOfLength(8),
+            randomAlphaOfLength(8),
+            randomAlphaOfLength(8),
+            null,
+            false,
+            null,
+            similarity,
+            null,
+            randomAlphaOfLength(8),
+            null,
+            randomAlphaOfLength(8),
+            threadPool
+        );
     }
 
     private Map<String, Object> getRequestConfigMap(

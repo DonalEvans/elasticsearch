@@ -330,7 +330,7 @@ public class SageMakerService implements InferenceService, RerankingInferenceSer
     @Override
     public Model updateModelWithEmbeddingDetails(Model model, int embeddingSize) {
         if (model instanceof SageMakerModel sageMakerModel) {
-            return modelBuilder.updateModelWithEmbeddingDetails(sageMakerModel, embeddingSize);
+            return SageMakerModelBuilder.updateModelWithEmbeddingDetails(sageMakerModel, embeddingSize);
         }
 
         throw invalidModelTypeForUpdateModelWithEmbeddingDetails(model.getClass());

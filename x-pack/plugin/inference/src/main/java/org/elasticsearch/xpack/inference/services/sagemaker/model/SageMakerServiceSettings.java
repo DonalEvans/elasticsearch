@@ -50,9 +50,9 @@ public record SageMakerServiceSettings(
 ) implements ServiceSettings {
 
     static final String NAME = "sage_maker_service_settings";
-    private static final String API = "api";
-    private static final String ENDPOINT_NAME = "endpoint_name";
-    private static final String REGION = "region";
+    static final String API = "api";
+    static final String ENDPOINT_NAME = "endpoint_name";
+    static final String REGION = "region";
     private static final String TARGET_MODEL = "target_model";
     private static final String TARGET_CONTAINER_HOSTNAME = "target_container_hostname";
     private static final String INFERENCE_COMPONENT_NAME = "inference_component_name";

@@ -56,7 +56,6 @@ import org.elasticsearch.xpack.core.inference.results.GenericDenseEmbeddingFloat
 import org.elasticsearch.xpack.inference.InputTypeTests;
 import org.elasticsearch.xpack.inference.Utils;
 import org.elasticsearch.xpack.inference.external.http.HttpClientManager;
-import org.elasticsearch.xpack.inference.external.http.sender.HttpRequestSender;
 import org.elasticsearch.xpack.inference.external.http.sender.HttpRequestSenderTests;
 import org.elasticsearch.xpack.inference.logging.ThrottlerManager;
 import org.elasticsearch.xpack.inference.services.InferenceServiceTestCase;
@@ -71,7 +70,6 @@ import org.elasticsearch.xpack.inference.services.jinaai.rerank.JinaAIRerankServ
 import org.elasticsearch.xpack.inference.services.jinaai.rerank.JinaAIRerankTaskSettings;
 import org.elasticsearch.xpack.inference.services.jinaai.rerank.JinaAIRerankTaskSettingsTests;
 import org.elasticsearch.xpack.inference.services.settings.RateLimitSettings;
-import org.elasticsearch.xpack.inference.services.settings.RateLimitSettingsTests;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.After;
@@ -80,6 +78,7 @@ import org.junit.Before;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -105,7 +104,6 @@ import static org.elasticsearch.xpack.inference.Utils.mockClusterServiceEmpty;
 import static org.elasticsearch.xpack.inference.Utils.randomSimilarityMeasure;
 import static org.elasticsearch.xpack.inference.external.http.Utils.entityAsMap;
 import static org.elasticsearch.xpack.inference.external.http.Utils.getUrl;
-import static org.elasticsearch.xpack.inference.services.SenderServiceTests.createMockSender;
 import static org.elasticsearch.xpack.inference.services.ServiceComponentsTests.createWithEmptySettings;
 import static org.elasticsearch.xpack.inference.services.ServiceFields.MULTIMODAL_MODEL;
 import static org.elasticsearch.xpack.inference.services.jinaai.JinaAIServiceSettings.DEFAULT_RATE_LIMIT_SETTINGS;
@@ -114,18 +112,12 @@ import static org.elasticsearch.xpack.inference.services.jinaai.embeddings.BaseJ
 import static org.elasticsearch.xpack.inference.services.jinaai.embeddings.BaseJinaAIEmbeddingsServiceSettingsTests.getMapOfMinimalEmbeddingSettings;
 import static org.elasticsearch.xpack.inference.services.settings.DefaultSecretSettingsTests.getSecretSettingsMap;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.instanceOf;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
 @SuppressWarnings("resource")
 public class JinaAIServiceTests extends InferenceServiceTestCase {
@@ -911,119 +903,6 @@ public class JinaAIServiceTests extends InferenceServiceTestCase {
             assertThat(model.getServiceSettings().modelId(), is(modelName));
             assertThat(model.apiKey().toString(), is(""));
         }
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_NullSimilarityInOriginalModel() throws IOException {
-        testUpdateModelWithEmbeddingDetails_Successful(null, 128);
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_NonNullSimilarityInOriginalModel() throws IOException {
-        testUpdateModelWithEmbeddingDetails_Successful(randomFrom(SimilarityMeasure.values()), 128);
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_NullDimensionsInOriginalModel() throws IOException {
-        testUpdateModelWithEmbeddingDetails_Successful(randomFrom(SimilarityMeasure.values()), null);
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_NullSimilarityAndDimensionsInOriginalModel() throws IOException {
-        testUpdateModelWithEmbeddingDetails_Successful(null, null);
-    }
-
-    private void testUpdateModelWithEmbeddingDetails_Successful(SimilarityMeasure similarityMeasure, Integer dimensions)
-        throws IOException {
-        var senderFactory = HttpRequestSenderTests.createSenderFactory(threadPool, clientManager);
-
-        try (var service = new JinaAIService(senderFactory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            var embeddingSize = randomNonNegativeInt();
-            var embeddingType = randomFrom(JinaAIEmbeddingType.values());
-            var model = JinaAIEmbeddingsModelTests.createModel(
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                RateLimitSettingsTests.createRandom(),
-                similarityMeasure,
-                dimensions,
-                randomNonNegativeInt(),
-                embeddingType,
-                JinaAIEmbeddingsTaskSettings.EMPTY_SETTINGS,
-                null,
-                randomAlphaOfLength(10),
-                false,
-                randomEmbeddingTaskType(),
-                randomBoolean()
-            );
-
-            Model updatedModel = service.updateModelWithEmbeddingDetails(model, embeddingSize);
-
-            SimilarityMeasure expectedSimilarityMeasure = similarityMeasure == null
-                ? JinaAIService.defaultSimilarity(embeddingType)
-                : similarityMeasure;
-            assertEquals(expectedSimilarityMeasure, updatedModel.getServiceSettings().similarity());
-            assertEquals(embeddingSize, updatedModel.getServiceSettings().dimensions().intValue());
-        }
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_returnsExistingModelIfSettingsUnchanged() throws IOException {
-        var senderFactory = HttpRequestSenderTests.createSenderFactory(threadPool, clientManager);
-
-        try (var service = new JinaAIService(senderFactory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            var similarityMeasure = randomSimilarityMeasure();
-            var dimensions = randomNonNegativeInt();
-            var model = JinaAIEmbeddingsModelTests.createModel(
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                RateLimitSettingsTests.createRandom(),
-                similarityMeasure,
-                dimensions,
-                randomNonNegativeInt(),
-                randomFrom(JinaAIEmbeddingType.values()),
-                JinaAIEmbeddingsTaskSettings.EMPTY_SETTINGS,
-                null,
-                randomAlphaOfLength(10),
-                false,
-                randomEmbeddingTaskType(),
-                randomBoolean()
-            );
-
-            assertThat(service.updateModelWithEmbeddingDetails(model, dimensions), sameInstance(model));
-        }
-    }
-
-    public void testInfer_ThrowsErrorWhenModelIsNotJinaAIModel() throws IOException {
-        var sender = createMockSender();
-
-        var factory = mock(HttpRequestSender.Factory.class);
-        when(factory.createSender()).thenReturn(sender);
-
-        var mockModel = getInvalidModel("model_id", "service_name");
-
-        try (var service = new JinaAIService(factory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            PlainActionFuture<InferenceServiceResults> listener = new PlainActionFuture<>();
-            service.infer(
-                mockModel,
-                null,
-                null,
-                null,
-                List.of(""),
-                false,
-                new HashMap<>(),
-                InputType.INGEST,
-                InferenceAction.Request.DEFAULT_TIMEOUT,
-                listener
-            );
-
-            var thrownException = expectThrows(ElasticsearchStatusException.class, () -> listener.actionGet(TEST_REQUEST_TIMEOUT));
-            assertThat(
-                thrownException.getMessage(),
-                is("The internal model was invalid, please delete the service [service_name] with id [model_id] and add it again.")
-            );
-
-            verify(factory, times(1)).createSender();
-            verify(sender, times(1)).startAsynchronously(any());
-        }
-
-        verify(sender, times(1)).close();
-        verifyNoMoreInteractions(factory);
-        verifyNoMoreInteractions(sender);
     }
 
     public void testInfer_TextEmbedding_UnauthorisedResponse() throws IOException {
@@ -2125,13 +2004,6 @@ public class JinaAIServiceTests extends InferenceServiceTestCase {
         }
     }
 
-    public void testDoesNotSupportsStreaming() throws IOException {
-        try (var service = new JinaAIService(mock(), createWithEmptySettings(mock()), mockClusterServiceEmpty())) {
-            assertFalse(service.canStream(TaskType.COMPLETION));
-            assertFalse(service.canStream(TaskType.ANY));
-        }
-    }
-
     private Map<String, Object> getRequestConfigMap(
         Map<String, Object> serviceSettings,
         Map<String, Object> taskSettings,
@@ -2165,12 +2037,40 @@ public class JinaAIServiceTests extends InferenceServiceTestCase {
     }
 
     private JinaAIService createJinaAIService() {
-        return new JinaAIService(mock(HttpRequestSender.Factory.class), createWithEmptySettings(threadPool), mockClusterServiceEmpty());
+        return new JinaAIService(
+            HttpRequestSenderTests.createSenderFactory(threadPool, clientManager),
+            createWithEmptySettings(threadPool),
+            mockClusterServiceEmpty()
+        );
     }
 
     @Override
     public InferenceService createInferenceService() {
         return createJinaAIService();
+    }
+
+    @Override
+    public Model createEmbeddingModel(SimilarityMeasure similarity) {
+        return JinaAIEmbeddingsModelTests.createModel(
+            null,
+            randomAlphaOfLength(8),
+            null,
+            similarity,
+            null,
+            null,
+            null,
+            JinaAIEmbeddingsTaskSettings.EMPTY_SETTINGS,
+            null,
+            randomAlphaOfLength(8),
+            false,
+            TEXT_EMBEDDING,
+            false
+        );
+    }
+
+    @Override
+    public EnumSet<TaskType> expectedStreamingTasks() {
+        return EnumSet.noneOf(TaskType.class);
     }
 
     @Override

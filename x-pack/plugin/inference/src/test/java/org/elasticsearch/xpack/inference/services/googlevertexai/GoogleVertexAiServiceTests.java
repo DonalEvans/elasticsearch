@@ -1025,37 +1025,6 @@ public class GoogleVertexAiServiceTests extends InferenceServiceTestCase {
         }
     }
 
-    public void testUpdateModelWithEmbeddingDetails_InvalidModelProvided() throws IOException {
-        try (var service = createGoogleVertexAiService()) {
-            var model = GoogleVertexAiRerankModelTests.createModel(randomAlphaOfLength(10), randomNonNegativeInt());
-            assertThrows(
-                ElasticsearchStatusException.class,
-                () -> { service.updateModelWithEmbeddingDetails(model, randomNonNegativeInt()); }
-            );
-        }
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_NullSimilarityInOriginalModel() throws IOException {
-        testUpdateModelWithEmbeddingDetails_Successful(null);
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_NonNullSimilarityInOriginalModel() throws IOException {
-        testUpdateModelWithEmbeddingDetails_Successful(randomFrom(SimilarityMeasure.values()));
-    }
-
-    private void testUpdateModelWithEmbeddingDetails_Successful(SimilarityMeasure similarityMeasure) throws IOException {
-        try (var service = createGoogleVertexAiService()) {
-            var embeddingSize = randomNonNegativeInt();
-            var model = GoogleVertexAiEmbeddingsModelTests.createModel(randomAlphaOfLength(10), randomBoolean(), similarityMeasure);
-
-            Model updatedModel = service.updateModelWithEmbeddingDetails(model, embeddingSize);
-
-            SimilarityMeasure expectedSimilarityMeasure = similarityMeasure == null ? SimilarityMeasure.DOT_PRODUCT : similarityMeasure;
-            assertEquals(expectedSimilarityMeasure, updatedModel.getServiceSettings().similarity());
-            assertEquals(embeddingSize, updatedModel.getServiceSettings().dimensions().intValue());
-        }
-    }
-
     @SuppressWarnings("checkstyle:LineLength")
     public void testGetConfiguration() throws Exception {
         try (var service = createGoogleVertexAiService()) {
@@ -1159,6 +1128,11 @@ public class GoogleVertexAiServiceTests extends InferenceServiceTestCase {
     @Override
     public InferenceService createInferenceService() {
         return createGoogleVertexAiService();
+    }
+
+    @Override
+    public Model createEmbeddingModel(SimilarityMeasure similarity) {
+        return GoogleVertexAiEmbeddingsModelTests.createModel(randomAlphaOfLength(8), null, similarity);
     }
 
     protected void assertRerankerWindowSize(RerankingInferenceService rerankingInferenceService) {

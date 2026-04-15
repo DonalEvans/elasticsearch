@@ -106,7 +106,7 @@ public class SageMakerModelBuilder {
         );
     }
 
-    public SageMakerModel updateModelWithEmbeddingDetails(SageMakerModel model, int embeddingSize) {
+    public static SageMakerModel updateModelWithEmbeddingDetails(SageMakerModel model, int embeddingSize) {
         var updatedApiServiceSettings = model.apiServiceSettings().updateModelWithEmbeddingDetails(embeddingSize);
 
         if (updatedApiServiceSettings == model.apiServiceSettings()) {

@@ -9,13 +9,14 @@ package org.elasticsearch.xpack.inference.services;
 
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.core.Nullable;
-import org.elasticsearch.inference.InferenceService;
 import org.elasticsearch.inference.Model;
 import org.elasticsearch.inference.ModelConfigurations;
 import org.elasticsearch.inference.ModelSecrets;
-import org.elasticsearch.inference.RerankingInferenceService;
+import org.elasticsearch.inference.ServiceSettings;
 import org.elasticsearch.inference.SimilarityMeasure;
+import org.elasticsearch.inference.TaskSettings;
 import org.elasticsearch.inference.TaskType;
+import org.elasticsearch.test.ESTestCase;
 import org.elasticsearch.test.http.MockWebServer;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.xpack.inference.external.http.HttpClientManager;
@@ -31,7 +32,7 @@ import static org.elasticsearch.xpack.inference.Utils.inferenceUtilityExecutors;
 import static org.elasticsearch.xpack.inference.Utils.mockClusterServiceEmpty;
 import static org.mockito.Mockito.mock;
 
-public abstract class AbstractInferenceServiceBaseTests extends InferenceServiceTestCase {
+public abstract class AbstractInferenceServiceBaseTests extends ESTestCase {
     protected final TestConfiguration testConfiguration;
 
     protected final MockWebServer webServer = new MockWebServer();
@@ -63,22 +64,16 @@ public abstract class AbstractInferenceServiceBaseTests extends InferenceService
     /**
      * Main configurations for the tests
      */
-    public record TestConfiguration(CommonConfig commonConfig, UpdateModelConfiguration updateModelConfiguration) {
+    public record TestConfiguration(CommonConfig commonConfig) {
         public static class Builder {
             private final CommonConfig commonConfig;
-            private UpdateModelConfiguration updateModelConfiguration = DISABLED_UPDATE_MODEL_TESTS;
 
             public Builder(CommonConfig commonConfig) {
                 this.commonConfig = commonConfig;
             }
 
-            public TestConfiguration.Builder enableUpdateModelTests(UpdateModelConfiguration updateModelConfiguration) {
-                this.updateModelConfiguration = updateModelConfiguration;
-                return this;
-            }
-
             public TestConfiguration build() {
-                return new TestConfiguration(commonConfig, updateModelConfiguration);
+                return new TestConfiguration(commonConfig);
             }
         }
     }
@@ -88,66 +83,133 @@ public abstract class AbstractInferenceServiceBaseTests extends InferenceService
      */
     public abstract static class CommonConfig {
 
-        private final TaskType targetTaskType;
-        private final TaskType unsupportedTaskType;
+        private final TaskType defaultTaskType;
         private final EnumSet<TaskType> supportedTaskTypes;
+        private final String serviceName;
 
-        public CommonConfig(TaskType targetTaskType, @Nullable TaskType unsupportedTaskType, EnumSet<TaskType> supportedTaskTypes) {
-            this.targetTaskType = Objects.requireNonNull(targetTaskType);
-            this.unsupportedTaskType = unsupportedTaskType;
+        public CommonConfig(TaskType defaultTaskType, EnumSet<TaskType> supportedTaskTypes, String serviceName) {
+            this.defaultTaskType = Objects.requireNonNull(defaultTaskType);
             this.supportedTaskTypes = Objects.requireNonNull(supportedTaskTypes);
+            this.serviceName = serviceName;
         }
 
-        public TaskType targetTaskType() {
-            return targetTaskType;
-        }
-
-        public TaskType unsupportedTaskType() {
-            return unsupportedTaskType;
+        public TaskType defaultTaskType() {
+            return defaultTaskType;
         }
 
         public EnumSet<TaskType> supportedTaskTypes() {
             return supportedTaskTypes;
         }
 
+        public String serviceName() {
+            return serviceName;
+        }
+
         protected abstract SenderService<?> createService(ThreadPool threadPool, HttpClientManager clientManager);
 
-        protected abstract Map<String, Object> createServiceSettingsMap(TaskType taskType);
+        /**
+         * Returns a map containing only those service settings which are necessary to create a model with the given task type
+         *
+         * @param taskType the task type of the model to create
+         * @return a minimal map of service settings
+         */
+        protected abstract Map<String, Object> createMinimalServiceSettingsMap(TaskType taskType);
 
-        protected abstract ModelConfigurations createModelConfigurations(TaskType taskType);
+        /**
+         * Override as necessary for services which produce different service settings depending on the parse context.
+         * <p>
+         * This should be implemented to return a map containing only those service settings which are necessary to create a model with the
+         * given task type
+         *
+         * @param taskType the task type of the model to create
+         * @param parseContext the parse context
+         * @return a minimal map of service settings
+         */
+        protected Map<String, Object> createMinimalServiceSettingsMap(TaskType taskType, ConfigurationParseContext parseContext) {
+            return createMinimalServiceSettingsMap(taskType);
+        }
+
+        /**
+         * This should be implemented to return a map containing all valid service settings for a model with the given task type and
+         * parse context
+         *
+         * @param taskType     the task type of the model to create
+         * @param parseContext the parse context, which may affect which fields are supported in the service settings
+         * @return a map of all supported service settings for the given task type and parse context
+         */
+        protected abstract Map<String, Object> createAllSupportedServiceSettingsMap(
+            TaskType taskType,
+            ConfigurationParseContext parseContext
+        );
+
+        /**
+         * This should be implemented to return a {@link ServiceSettings} for the specified {@link TaskType} and
+         * {@link ConfigurationParseContext} using the provided settings map.
+         *
+         * @param taskType the {@link TaskType} of the returned {@link ModelConfigurations}
+         * @param settingsMap the map of settings to use to create the {@link ServiceSettings}
+         * @return a {@link ModelConfigurations} with specified settings
+         */
+        protected abstract ServiceSettings getServiceSettings(
+            Map<String, Object> settingsMap,
+            TaskType taskType,
+            ConfigurationParseContext context
+        );
+
+        /**
+         * This should be implemented to return an empty {@link TaskSettings} implementation for the specified {@link TaskType}
+         *
+         * @param taskType the {@link TaskType} of the returned {@link TaskSettings}
+         * @return an {@link TaskSettings} of the correct class
+         */
+        protected abstract TaskSettings getEmptyTaskSettings(TaskType taskType);
 
         protected abstract ModelSecrets createModelSecrets();
 
-        protected Map<String, Object> createServiceSettingsMap(TaskType taskType, ConfigurationParseContext parseContext) {
-            return createServiceSettingsMap(taskType);
-        }
-
-        protected Map<String, Object> createTaskSettingsMap(TaskType taskType) {
-            return createTaskSettingsMap();
-        }
-
-        protected abstract Map<String, Object> createTaskSettingsMap();
+        /**
+         * This should be implemented to return a <B>mutable</B> map containing all supported task settings for the given task type
+         *
+         * @param taskType the task type to create task settings for
+         * @return a map containing all supported task settings for the given task type
+         */
+        protected abstract Map<String, Object> createTaskSettingsMap(TaskType taskType);
 
         protected abstract Map<String, Object> createSecretSettingsMap();
 
-        protected abstract void assertModel(Model model, TaskType taskType, boolean modelIncludesSecrets);
+        /**
+         * This should be implemented to assert that the provided model matches what is expected for the given task type and settings.
+         *
+         * @param model the model to check
+         * @param taskType the task type of the model
+         * @param modelIncludesSecrets if true, the model should contain secret settings
+         * @param minimalSettings if true, only required fields will be set, with all other fields using default values. If false, all
+         *                        fields will be explicitly set
+         */
+        protected abstract void assertModel(Model model, TaskType taskType, boolean modelIncludesSecrets, boolean minimalSettings);
 
-        protected void assertModel(Model model, TaskType taskType, boolean modelIncludesSecrets, ConfigurationParseContext parseContext) {
-            assertModel(model, taskType, modelIncludesSecrets);
-        }
-
-        protected void assertModel(Model model, TaskType taskType) {
-            assertModel(model, taskType, true);
+        /**
+         * Override as necessary for services which expect a different model to be created depending on the parse context.
+         * <p>
+         * This should be implemented to assert that the provided model matches what is expected for the given task type and settings.
+         *
+         * @param model the model to check
+         * @param taskType the task type of the model
+         * @param modelIncludesSecrets if true, the model should contain secret settings
+         * @param minimalSettings if true, only required fields will be set, with all other fields using default values. If false, all
+         *                        fields will be explicitly set
+         * @param parseContext the parse context used to create the model
+         */
+        protected void assertModel(
+            Model model,
+            TaskType taskType,
+            boolean modelIncludesSecrets,
+            boolean minimalSettings,
+            ConfigurationParseContext parseContext
+        ) {
+            assertModel(model, taskType, modelIncludesSecrets, minimalSettings);
         }
 
         protected abstract EnumSet<TaskType> supportedStreamingTasks();
-
-        /**
-         * Override this method if the service support reranking. This method won't be called if the service doesn't support reranking.
-         */
-        protected void assertRerankerWindowSize(RerankingInferenceService rerankingInferenceService) {
-            fail("Reranking services should override this test method to verify window size");
-        }
     }
 
     /**
@@ -173,14 +235,4 @@ public abstract class AbstractInferenceServiceBaseTests extends InferenceService
             throw new UnsupportedOperationException("Update model tests are disabled");
         }
     };
-
-    @Override
-    public InferenceService createInferenceService() {
-        return testConfiguration.commonConfig.createService(threadPool, clientManager);
-    }
-
-    @Override
-    protected void assertRerankerWindowSize(RerankingInferenceService rerankingInferenceService) {
-        testConfiguration.commonConfig.assertRerankerWindowSize(rerankingInferenceService);
-    }
 }

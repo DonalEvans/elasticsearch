@@ -1132,95 +1132,6 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
         }
     }
 
-    public void testUpdateModelWithEmbeddingDetails_InvalidModelProvided() throws IOException {
-        var senderFactory = HttpRequestSenderTests.createSenderFactory(threadPool, clientManager);
-        try (var service = new AzureAiStudioService(senderFactory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            var model = AzureAiStudioChatCompletionModelTests.createModel(
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                randomFrom(AzureAiStudioProvider.values()),
-                randomFrom(AzureAiStudioEndpointType.values()),
-                randomAlphaOfLength(10)
-            );
-            assertThrows(
-                ElasticsearchStatusException.class,
-                () -> { service.updateModelWithEmbeddingDetails(model, randomNonNegativeInt()); }
-            );
-        }
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_NullSimilarityInOriginalModel() throws IOException {
-        testUpdateModelWithEmbeddingDetails_Successful(null);
-    }
-
-    public void testUpdateModelWithEmbeddingDetails_NonNullSimilarityInOriginalModel() throws IOException {
-        testUpdateModelWithEmbeddingDetails_Successful(randomFrom(SimilarityMeasure.values()));
-    }
-
-    private void testUpdateModelWithEmbeddingDetails_Successful(SimilarityMeasure similarityMeasure) throws IOException {
-        var senderFactory = HttpRequestSenderTests.createSenderFactory(threadPool, clientManager);
-        try (var service = new AzureAiStudioService(senderFactory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            var embeddingSize = randomNonNegativeInt();
-            var model = AzureAiStudioEmbeddingsModelTests.createModel(
-                randomAlphaOfLength(10),
-                randomAlphaOfLength(10),
-                randomFrom(AzureAiStudioProvider.values()),
-                randomFrom(AzureAiStudioEndpointType.values()),
-                randomAlphaOfLength(10),
-                randomNonNegativeInt(),
-                randomBoolean(),
-                randomNonNegativeInt(),
-                similarityMeasure,
-                randomAlphaOfLength(10),
-                RateLimitSettingsTests.createRandom()
-            );
-
-            Model updatedModel = service.updateModelWithEmbeddingDetails(model, embeddingSize);
-
-            SimilarityMeasure expectedSimilarityMeasure = similarityMeasure == null ? SimilarityMeasure.DOT_PRODUCT : similarityMeasure;
-            assertEquals(expectedSimilarityMeasure, updatedModel.getServiceSettings().similarity());
-            assertEquals(embeddingSize, updatedModel.getServiceSettings().dimensions().intValue());
-        }
-    }
-
-    public void testInfer_ThrowsErrorWhenModelIsNotAzureAiStudioModel() throws IOException {
-        var sender = createMockSender();
-
-        var factory = mock(HttpRequestSender.Factory.class);
-        when(factory.createSender()).thenReturn(sender);
-
-        var mockModel = getInvalidModel("model_id", "service_name");
-
-        try (var service = new AzureAiStudioService(factory, createWithEmptySettings(threadPool), mockClusterServiceEmpty())) {
-            PlainActionFuture<InferenceServiceResults> listener = new PlainActionFuture<>();
-            service.infer(
-                mockModel,
-                null,
-                null,
-                null,
-                List.of(""),
-                false,
-                new HashMap<>(),
-                InputType.INGEST,
-                InferenceAction.Request.DEFAULT_TIMEOUT,
-                listener
-            );
-
-            var thrownException = expectThrows(ElasticsearchStatusException.class, () -> listener.actionGet(TIMEOUT));
-            assertThat(
-                thrownException.getMessage(),
-                is("The internal model was invalid, please delete the service [service_name] with id [model_id] and add it again.")
-            );
-
-            verify(factory, times(1)).createSender();
-            verify(sender, times(1)).startAsynchronously(any());
-        }
-
-        verify(sender, times(1)).close();
-        verifyNoMoreInteractions(factory);
-        verifyNoMoreInteractions(sender);
-    }
-
     public void testInfer_ThrowsValidationErrorForInvalidInputType() throws IOException {
         var sender = createMockSender();
 
@@ -1691,19 +1602,11 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
             );
         }
     }
-
-    public void testSupportsStreaming() throws IOException {
-        try (var service = new AzureAiStudioService(mock(), createWithEmptySettings(mock()), mockClusterServiceEmpty())) {
-            assertThat(service.supportedStreamingTasks(), is(EnumSet.of(TaskType.COMPLETION)));
-            assertFalse(service.canStream(TaskType.ANY));
-        }
-    }
-
     // ----------------------------------------------------------------
 
     private AzureAiStudioService createService() {
         return new AzureAiStudioService(
-            mock(HttpRequestSender.Factory.class),
+            HttpRequestSenderTests.createSenderFactory(threadPool, clientManager),
             createWithEmptySettings(threadPool),
             mockClusterServiceEmpty()
         );
@@ -1712,6 +1615,28 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     @Override
     public InferenceService createInferenceService() {
         return createService();
+    }
+
+    @Override
+    public EnumSet<TaskType> expectedStreamingTasks() {
+        return EnumSet.of(TaskType.COMPLETION);
+    }
+
+    @Override
+    public Model createEmbeddingModel(SimilarityMeasure similarity) {
+        return AzureAiStudioEmbeddingsModelTests.createModel(
+            randomAlphaOfLength(10),
+            randomAlphaOfLength(10),
+            randomFrom(AzureAiStudioProvider.values()),
+            randomFrom(AzureAiStudioEndpointType.values()),
+            randomAlphaOfLength(10),
+            randomNonNegativeInt(),
+            randomBoolean(),
+            randomNonNegativeInt(),
+            similarity,
+            randomAlphaOfLength(10),
+            RateLimitSettingsTests.createRandom()
+        );
     }
 
     @Override
@@ -1794,27 +1719,6 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     private static Map<String, Object> getSecretSettingsMap(String apiKey) {
         return new HashMap<>(Map.of(API_KEY_FIELD, apiKey));
     }
-
-    private static final String testEmbeddingResultJson = """
-        {
-          "object": "list",
-          "data": [
-              {
-                  "object": "embedding",
-                  "index": 0,
-                  "embedding": [
-                      0.0123,
-                      -0.0123
-                  ]
-              }
-          ],
-          "model": "text-embedding-ada-002-v2",
-          "usage": {
-              "prompt_tokens": 8,
-              "total_tokens": 8
-          }
-        }
-        """;
 
     private static final String testChatCompletionResultJson = """
         {

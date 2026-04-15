@@ -22,6 +22,7 @@ import org.elasticsearch.inference.ChunkedInference;
 import org.elasticsearch.inference.EmbeddingRequest;
 import org.elasticsearch.inference.EmptySecretSettings;
 import org.elasticsearch.inference.EmptyTaskSettings;
+import org.elasticsearch.inference.InferenceService;
 import org.elasticsearch.inference.InferenceServiceConfiguration;
 import org.elasticsearch.inference.InferenceServiceResults;
 import org.elasticsearch.inference.InferenceString;
@@ -69,12 +70,14 @@ import org.elasticsearch.xpack.inference.external.http.sender.HttpRequestSender;
 import org.elasticsearch.xpack.inference.external.http.sender.HttpRequestSenderTests;
 import org.elasticsearch.xpack.inference.logging.ThrottlerManager;
 import org.elasticsearch.xpack.inference.services.InferenceEventsAssertion;
+import org.elasticsearch.xpack.inference.services.InferenceServiceTestCase;
 import org.elasticsearch.xpack.inference.services.ServiceFields;
 import org.elasticsearch.xpack.inference.services.elastic.completion.ElasticInferenceServiceCompletionModel;
 import org.elasticsearch.xpack.inference.services.elastic.completion.ElasticInferenceServiceCompletionModelTests;
 import org.elasticsearch.xpack.inference.services.elastic.completion.ElasticInferenceServiceCompletionServiceSettings;
 import org.elasticsearch.xpack.inference.services.elastic.denseembeddings.ElasticInferenceServiceDenseEmbeddingsModel;
 import org.elasticsearch.xpack.inference.services.elastic.denseembeddings.ElasticInferenceServiceDenseEmbeddingsModelTests;
+import org.elasticsearch.xpack.inference.services.elastic.denseembeddings.ElasticInferenceServiceDenseEmbeddingsServiceSettings;
 import org.elasticsearch.xpack.inference.services.elastic.rerank.ElasticInferenceServiceRerankModel;
 import org.elasticsearch.xpack.inference.services.elastic.rerank.ElasticInferenceServiceRerankModelTests;
 import org.elasticsearch.xpack.inference.services.elastic.sparseembeddings.ElasticInferenceServiceSparseEmbeddingsModel;
@@ -127,7 +130,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-public class ElasticInferenceServiceTests extends ESTestCase {
+public class ElasticInferenceServiceTests extends InferenceServiceTestCase {
 
     private static final String URL_VALUE = "http://eis-gateway.com";
     private static final String INFERENCE_ENTITY_ID = "id";
@@ -548,44 +551,6 @@ public class ElasticInferenceServiceTests extends ESTestCase {
         assertThat(sparseEmbeddingsModel.getServiceSettings().modelId(), is(expectedModelId));
         assertThat(sparseEmbeddingsModel.getTaskSettings(), is(EmptyTaskSettings.INSTANCE));
         assertThat(sparseEmbeddingsModel.getSecretSettings(), is(EmptySecretSettings.INSTANCE));
-    }
-
-    public void testInfer_ThrowsErrorWhenModelIsNotAValidModel() throws IOException {
-        var sender = createMockSender();
-
-        var factory = mock(HttpRequestSender.Factory.class);
-        when(factory.createSender()).thenReturn(sender);
-
-        var mockModel = getInvalidModel("model_id", "service_name", TaskType.SPARSE_EMBEDDING);
-
-        try (var service = createService(factory)) {
-            PlainActionFuture<InferenceServiceResults> listener = new PlainActionFuture<>();
-            service.infer(
-                mockModel,
-                null,
-                null,
-                null,
-                List.of(""),
-                false,
-                new HashMap<>(),
-                InputType.INGEST,
-                InferenceAction.Request.DEFAULT_TIMEOUT,
-                listener
-            );
-
-            var thrownException = expectThrows(ElasticsearchStatusException.class, () -> listener.actionGet(TEST_REQUEST_TIMEOUT));
-            MatcherAssert.assertThat(
-                thrownException.getMessage(),
-                is("The internal model was invalid, please delete the service [service_name] with id [model_id] and add it again.")
-            );
-
-            verify(factory, times(1)).createSender();
-            verify(sender, times(1)).startAsynchronously(any());
-        }
-
-        verify(sender, times(1)).close();
-        verifyNoMoreInteractions(factory);
-        verifyNoMoreInteractions(sender);
     }
 
     public void testInfer_ThrowsValidationErrorForInvalidRerankParams() throws IOException {
@@ -2021,5 +1986,31 @@ public class ElasticInferenceServiceTests extends ESTestCase {
             var resultModel = inferenceService.buildModelFromConfigAndSecrets(model.getConfigurations(), model.getSecrets());
             assertThat(resultModel, is(model));
         }
+    }
+
+    @Override
+    public InferenceService createInferenceService() {
+        return createService(HttpRequestSenderTests.createSenderFactory(threadPool, clientManager));
+    }
+
+    @Override
+    public Model createEmbeddingModel(SimilarityMeasure similarity) {
+        var settings = new ElasticInferenceServiceDenseEmbeddingsServiceSettings(randomAlphaOfLength(8), similarity, null, null);
+        return ElasticInferenceServiceDenseEmbeddingsModelTests.createTextEmbeddingModel(randomAlphaOfLength(8), settings, null);
+    }
+
+    @Override
+    public SimilarityMeasure getDefaultSimilarity() {
+        return SimilarityMeasure.COSINE;
+    }
+
+    @Override
+    public EnumSet<TaskType> expectedStreamingTasks() {
+        return EnumSet.of(TaskType.CHAT_COMPLETION);
+    }
+
+    @Override
+    public void testRerankersImplementRerankInterface() {
+        // ElasticInferenceService does not implement RerankingInferenceService
     }
 }
