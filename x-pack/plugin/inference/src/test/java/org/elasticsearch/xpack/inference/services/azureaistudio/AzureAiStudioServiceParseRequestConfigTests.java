@@ -5,7 +5,7 @@
  * 2.0.
  */
 
-package org.elasticsearch.xpack.inference.services.amazonbedrock;
+package org.elasticsearch.xpack.inference.services.azureaistudio;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 
@@ -13,15 +13,15 @@ import org.elasticsearch.xpack.inference.services.AbstractParseRequestConfigTest
 
 import java.util.ArrayList;
 
-public class AmazonBedrockServiceParseRequestConfigTests extends AbstractParseRequestConfigTests {
-    public AmazonBedrockServiceParseRequestConfigTests(AmazonBedrockProvider provider, TestCase testCase) {
-        super(AmazonBedrockServiceParameterizedTestConfiguration.createTestConfiguration(provider), testCase);
+public class AzureAiStudioServiceParseRequestConfigTests extends AbstractParseRequestConfigTests {
+    public AzureAiStudioServiceParseRequestConfigTests(AzureAiStudioProvider azureAiStudioProvider, TestCase testCase) {
+        super(AzureAiStudioServiceParameterizedTestConfiguration.createTestConfiguration(azureAiStudioProvider), testCase);
     }
 
     @ParametersFactory
     public static Iterable<Object[]> providersAndTestCases() {
         var providersAndTestCases = new ArrayList<Object[]>();
-        for (AmazonBedrockProvider provider : AmazonBedrockProvider.values()) {
+        for (AzureAiStudioProvider provider : AzureAiStudioProvider.values()) {
             parameters().forEach(testCase -> providersAndTestCases.add(new Object[] { provider, testCase[0] }));
         }
         return providersAndTestCases;

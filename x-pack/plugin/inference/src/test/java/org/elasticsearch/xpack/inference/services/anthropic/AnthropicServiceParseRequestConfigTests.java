@@ -7,10 +7,17 @@
 
 package org.elasticsearch.xpack.inference.services.anthropic;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import org.elasticsearch.xpack.inference.services.AbstractParseRequestConfigTests;
 
 public class AnthropicServiceParseRequestConfigTests extends AbstractParseRequestConfigTests {
     public AnthropicServiceParseRequestConfigTests(TestCase testCase) {
         super(AnthropicServiceParameterizedTestConfiguration.createTestConfiguration(), testCase);
+    }
+
+    @ParametersFactory
+    public static Iterable<TestCase[]> testParameters() {
+        return parameters();
     }
 }

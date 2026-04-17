@@ -7,10 +7,17 @@
 
 package org.elasticsearch.xpack.inference.services.custom;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import org.elasticsearch.xpack.inference.services.AbstractParseRequestConfigTests;
 
 public class CustomServiceParseRequestConfigTests extends AbstractParseRequestConfigTests {
     public CustomServiceParseRequestConfigTests(TestCase testCase) {
         super(CustomServiceParameterizedTestConfiguration.createTestConfiguration(), testCase);
+    }
+
+    @ParametersFactory
+    public static Iterable<TestCase[]> testParameters() {
+        return parameters();
     }
 }

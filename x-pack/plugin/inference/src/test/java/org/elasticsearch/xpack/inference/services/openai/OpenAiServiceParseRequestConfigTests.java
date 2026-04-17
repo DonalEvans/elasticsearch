@@ -7,10 +7,17 @@
 
 package org.elasticsearch.xpack.inference.services.openai;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import org.elasticsearch.xpack.inference.services.AbstractParseRequestConfigTests;
 
 public class OpenAiServiceParseRequestConfigTests extends AbstractParseRequestConfigTests {
     public OpenAiServiceParseRequestConfigTests(TestCase testCase) {
         super(OpenAiServiceParameterizedTestConfiguration.createTestConfiguration(), testCase);
+    }
+
+    @ParametersFactory
+    public static Iterable<TestCase[]> testParameters() {
+        return parameters();
     }
 }

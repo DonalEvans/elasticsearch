@@ -127,7 +127,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_CreatesAnAzureAiStudioEmbeddingsModel() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             ActionListener<Model> modelVerificationListener = ActionListener.wrap(model -> {
                 assertThat(model, instanceOf(AzureAiStudioEmbeddingsModel.class));
 
@@ -153,7 +153,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_CreatesAnAzureAiStudioEmbeddingsModelWhenChunkingSettingsProvided() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             ActionListener<Model> modelVerificationListener = ActionListener.wrap(model -> {
                 assertThat(model, instanceOf(AzureAiStudioEmbeddingsModel.class));
 
@@ -181,7 +181,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_CreatesAnAzureAiStudioEmbeddingsModelWhenChunkingSettingsNotProvided() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             ActionListener<Model> modelVerificationListener = ActionListener.wrap(model -> {
                 assertThat(model, instanceOf(AzureAiStudioEmbeddingsModel.class));
 
@@ -208,7 +208,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_CreatesAnAzureAiStudioChatCompletionModel() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             ActionListener<Model> modelVerificationListener = ActionListener.wrap(model -> {
                 assertThat(model, instanceOf(AzureAiStudioChatCompletionModel.class));
 
@@ -235,7 +235,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_CreatesAnAzureAiStudioRerankModel() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             ActionListener<Model> modelVerificationListener = ActionListener.wrap(model -> {
                 assertThat(model, instanceOf(AzureAiStudioRerankModel.class));
 
@@ -262,7 +262,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsUnsupportedModelType() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             ActionListener<Model> modelVerificationListener = ActionListener.wrap(
                 model -> fail("Expected exception, but got model: " + model),
                 exception -> {
@@ -285,7 +285,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenAnExtraKeyExistsInConfig() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getRequestConfigMap(
                 getChatCompletionServiceSettingsMap(URL_VALUE, "openai", "token"),
                 getChatCompletionTaskSettingsMap(null, null, true, null),
@@ -309,7 +309,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenAnExtraKeyExistsInEmbeddingServiceSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", null, null, null, null);
             serviceSettings.put("extra_key", "value");
 
@@ -331,7 +331,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenDimsSetByUserExistsInEmbeddingServiceSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getRequestConfigMap(
                 getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, null, null),
                 getEmbeddingsTaskSettingsMap("user"),
@@ -354,7 +354,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenAnExtraKeyExistsInEmbeddingTaskSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var taskSettings = getEmbeddingsTaskSettingsMap("user");
             taskSettings.put("extra_key", "value");
 
@@ -380,7 +380,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenAnExtraKeyExistsInEmbeddingSecretSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var secretSettings = getSecretSettingsMap(API_KEY_VALUE);
             secretSettings.put("extra_key", "value");
 
@@ -406,7 +406,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenAnExtraKeyExistsInChatCompletionServiceSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getChatCompletionServiceSettingsMap(URL_VALUE, "openai", "token");
             serviceSettings.put("extra_key", "value");
 
@@ -432,7 +432,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenAnExtraKeyExistsInChatCompletionTaskSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var taskSettings = getChatCompletionTaskSettingsMap(null, 2.0, null, null);
             taskSettings.put("extra_key", "value");
 
@@ -458,7 +458,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenAnExtraKeyExistsInChatCompletionSecretSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var secretSettings = getSecretSettingsMap(API_KEY_VALUE);
             secretSettings.put("extra_key", "value");
 
@@ -484,7 +484,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenAnExtraKeyExistsInRerankServiceSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getRerankServiceSettingsMap(URL_VALUE, "cohere", "token");
             serviceSettings.put("extra_key", "value");
 
@@ -506,7 +506,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenAnExtraKeyExistsInRerankTaskSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var taskSettings = getRerankTaskSettingsMap(null, null);
             taskSettings.put("extra_key", "value");
 
@@ -532,7 +532,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenAnExtraKeyExistsInRerankSecretSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var secretSettings = getSecretSettingsMap(API_KEY_VALUE);
             secretSettings.put("extra_key", "value");
 
@@ -558,7 +558,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenProviderIsNotValidForEmbeddings() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getEmbeddingsServiceSettingsMap(URL_VALUE, "databricks", "token", null, null, null, null);
 
             var config = getRequestConfigMap(serviceSettings, getEmbeddingsTaskSettingsMap("user"), getSecretSettingsMap(API_KEY_VALUE));
@@ -576,7 +576,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenEndpointTypeIsNotValidForEmbeddingsProvider() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "realtime", null, null, null, null);
 
             var config = getRequestConfigMap(serviceSettings, getEmbeddingsTaskSettingsMap("user"), getSecretSettingsMap(API_KEY_VALUE));
@@ -597,7 +597,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenEndpointTypeIsNotValidForChatCompletionProvider() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getChatCompletionServiceSettingsMap(URL_VALUE, "openai", "realtime");
 
             var config = getRequestConfigMap(
@@ -622,7 +622,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenProviderIsNotValidForRerank() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getRerankServiceSettingsMap(URL_VALUE, "databricks", "token");
 
             var config = getRequestConfigMap(serviceSettings, getRerankTaskSettingsMap(null, null), getSecretSettingsMap(API_KEY_VALUE));
@@ -640,7 +640,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParseRequestConfig_ThrowsWhenEndpointTypeIsNotValidForRerankProvider() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getRerankServiceSettingsMap(URL_VALUE, "cohere", "realtime");
 
             var config = getRequestConfigMap(serviceSettings, getRerankTaskSettingsMap(null, null), getSecretSettingsMap(API_KEY_VALUE));
@@ -661,7 +661,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_CreatesAnAzureAiStudioEmbeddingsModel() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, 512, null),
                 getEmbeddingsTaskSettingsMap("user"),
@@ -687,7 +687,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_CreatesAnEmbeddingsModelWhenChunkingSettingsProvided() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, 512, null),
                 getEmbeddingsTaskSettingsMap("user"),
@@ -715,7 +715,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_CreatesAnEmbeddingsModelWhenChunkingSettingsNotProvided() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, 512, null),
                 getEmbeddingsTaskSettingsMap("user"),
@@ -742,7 +742,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_CreatesAnAzureAiStudioChatCompletionModel() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getChatCompletionServiceSettingsMap(URL_VALUE, "openai", "token"),
                 getChatCompletionTaskSettingsMap(1.0, 2.0, true, 512),
@@ -767,7 +767,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_CreatesAnAzureAiStudioRerankModel() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getRerankServiceSettingsMap(URL_VALUE, "cohere", "token"),
                 getRerankTaskSettingsMap(true, 2),
@@ -790,7 +790,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_ThrowsUnsupportedModelType() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             ActionListener<Model> modelVerificationListener = ActionListener.wrap(
                 model -> fail("Expected exception, but got model: " + model),
                 exception -> {
@@ -813,7 +813,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_ThrowsErrorTryingToParseInvalidModel() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getChatCompletionServiceSettingsMap(URL_VALUE, "openai", "token"),
                 getChatCompletionTaskSettingsMap(1.0, 2.0, true, 512),
@@ -842,7 +842,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_DoesNotThrowWhenAnExtraKeyExistsInConfig() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, 512, null);
             var taskSettings = getEmbeddingsTaskSettingsMap("user");
             var secretSettings = getSecretSettingsMap(API_KEY_VALUE);
@@ -858,7 +858,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_DoesNotThrowWhenExtraKeyExistsInEmbeddingServiceSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, 512, null);
             serviceSettings.put("extra_key", "value");
 
@@ -875,7 +875,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_DoesNotThrowWhenAnExtraKeyExistsInEmbeddingTaskSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, 512, null);
             var taskSettings = getEmbeddingsTaskSettingsMap("user");
             taskSettings.put("extra_key", "value");
@@ -892,7 +892,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_DoesNotThrowWhenAnExtraKeyExistsInEmbeddingSecretSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, 512, null);
             var taskSettings = getEmbeddingsTaskSettingsMap("user");
             var secretSettings = getSecretSettingsMap(API_KEY_VALUE);
@@ -910,7 +910,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
 
     public void testParsePersistedConfig_WithSecrets_DoesNotThrowWhenAnExtraKeyExistsInChatCompletionServiceSettingsMap()
         throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getChatCompletionServiceSettingsMap(URL_VALUE, "openai", "token");
             serviceSettings.put("extra_key", "value");
             var taskSettings = getChatCompletionTaskSettingsMap(1.0, 2.0, true, 512);
@@ -926,7 +926,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_DoesNotThrowWhenAnExtraKeyExistsInChatCompletionTaskSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getChatCompletionServiceSettingsMap(URL_VALUE, "openai", "token");
             var taskSettings = getChatCompletionTaskSettingsMap(1.0, 2.0, true, 512);
             taskSettings.put("extra_key", "value");
@@ -943,7 +943,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
 
     public void testParsePersistedConfig_WithSecrets_DoesNotThrowWhenAnExtraKeyExistsInChatCompletionSecretSettingsMap()
         throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getChatCompletionServiceSettingsMap(URL_VALUE, "openai", "token");
             var taskSettings = getChatCompletionTaskSettingsMap(1.0, 2.0, true, 512);
             var secretSettings = getSecretSettingsMap(API_KEY_VALUE);
@@ -959,7 +959,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_DoesNotThrowWhenAnExtraKeyExistsInRerankServiceSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getRerankServiceSettingsMap(URL_VALUE, "cohere", "token");
             serviceSettings.put("extra_key", "value");
             var taskSettings = getRerankTaskSettingsMap(true, 2);
@@ -975,7 +975,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_DoesNotThrowWhenAnExtraKeyExistsInRerankTaskSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getRerankServiceSettingsMap(URL_VALUE, "cohere", "token");
             var taskSettings = getRerankTaskSettingsMap(true, 2);
             taskSettings.put("extra_key", "value");
@@ -991,7 +991,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithSecrets_DoesNotThrowWhenAnExtraKeyExistsInRerankSecretSettingsMap() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var serviceSettings = getRerankServiceSettingsMap(URL_VALUE, "cohere", "token");
             var taskSettings = getRerankTaskSettingsMap(true, 2);
             var secretSettings = getSecretSettingsMap(API_KEY_VALUE);
@@ -1007,7 +1007,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithoutSecretsCreatesEmbeddingsModel() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, 512, null),
                 getEmbeddingsTaskSettingsMap("user"),
@@ -1032,7 +1032,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_CreatesAnEmbeddingsModelWhenChunkingSettingsProvided() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, 512, null),
                 getEmbeddingsTaskSettingsMap("user"),
@@ -1059,7 +1059,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_CreatesAnEmbeddingsModelWhenChunkingSettingsNotProvided() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getEmbeddingsServiceSettingsMap(URL_VALUE, "openai", "token", 1024, true, 512, null),
                 getEmbeddingsTaskSettingsMap("user"),
@@ -1085,7 +1085,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithoutSecretsCreatesChatCompletionModel() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getChatCompletionServiceSettingsMap(URL_VALUE, "openai", "token"),
                 getChatCompletionTaskSettingsMap(1.0, 2.0, true, 512),
@@ -1110,7 +1110,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
 
     public void testParsePersistedConfig_WithoutSecretsCreatesRerankModel() throws IOException {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             var config = getPersistedConfigMap(
                 getRerankServiceSettingsMap(URL_VALUE, "cohere", "token"),
                 getRerankTaskSettingsMap(true, 2),
@@ -1522,7 +1522,7 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
 
     @SuppressWarnings("checkstyle:LineLength")
     public void testGetConfiguration() throws Exception {
-        try (var service = createService()) {
+        try (var service = (AzureAiStudioService) createInferenceService()) {
             String content = XContentHelper.stripWhitespace(
                 """
                     {
@@ -1604,17 +1604,13 @@ public class AzureAiStudioServiceTests extends InferenceServiceTestCase {
     }
     // ----------------------------------------------------------------
 
-    private AzureAiStudioService createService() {
+    @Override
+    public InferenceService createInferenceService() {
         return new AzureAiStudioService(
             HttpRequestSenderTests.createSenderFactory(threadPool, clientManager),
             createWithEmptySettings(threadPool),
             mockClusterServiceEmpty()
         );
-    }
-
-    @Override
-    public InferenceService createInferenceService() {
-        return createService();
     }
 
     @Override

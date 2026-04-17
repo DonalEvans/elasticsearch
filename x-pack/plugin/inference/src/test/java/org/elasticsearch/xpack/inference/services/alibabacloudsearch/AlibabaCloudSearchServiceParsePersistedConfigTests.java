@@ -7,10 +7,17 @@
 
 package org.elasticsearch.xpack.inference.services.alibabacloudsearch;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import org.elasticsearch.xpack.inference.services.AbstractParsePersistedConfigTests;
 
 public class AlibabaCloudSearchServiceParsePersistedConfigTests extends AbstractParsePersistedConfigTests {
     public AlibabaCloudSearchServiceParsePersistedConfigTests(TestCase testCase) {
         super(AlibabaCloudSearchServiceParameterizedTestConfiguration.createTestConfiguration(), testCase);
+    }
+
+    @ParametersFactory
+    public static Iterable<TestCase[]> testParameters() {
+        return parameters();
     }
 }

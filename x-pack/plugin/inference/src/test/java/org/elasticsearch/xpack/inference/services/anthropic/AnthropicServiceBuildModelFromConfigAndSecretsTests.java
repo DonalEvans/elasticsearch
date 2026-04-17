@@ -7,10 +7,17 @@
 
 package org.elasticsearch.xpack.inference.services.anthropic;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import org.elasticsearch.xpack.inference.services.AbstractBuildModelFromConfigAndSecretsTests;
 
 public class AnthropicServiceBuildModelFromConfigAndSecretsTests extends AbstractBuildModelFromConfigAndSecretsTests {
     public AnthropicServiceBuildModelFromConfigAndSecretsTests(TestCase testCase) {
         super(AnthropicServiceParameterizedTestConfiguration.createTestConfiguration(), testCase);
+    }
+
+    @ParametersFactory
+    public static Iterable<TestCase[]> testParameters() {
+        return parameters();
     }
 }

@@ -7,10 +7,17 @@
 
 package org.elasticsearch.xpack.inference.services.fireworksai;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import org.elasticsearch.xpack.inference.services.AbstractParsePersistedConfigTests;
 
 public class FireworksAiServiceParsePersistedConfigTests extends AbstractParsePersistedConfigTests {
     public FireworksAiServiceParsePersistedConfigTests(TestCase testCase) {
         super(FireworksAiServiceParameterizedTestConfiguration.createTestConfiguration(), testCase);
+    }
+
+    @ParametersFactory
+    public static Iterable<TestCase[]> testParameters() {
+        return parameters();
     }
 }

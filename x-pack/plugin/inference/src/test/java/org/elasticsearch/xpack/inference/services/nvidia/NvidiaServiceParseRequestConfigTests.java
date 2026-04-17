@@ -7,10 +7,17 @@
 
 package org.elasticsearch.xpack.inference.services.nvidia;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import org.elasticsearch.xpack.inference.services.AbstractParseRequestConfigTests;
 
 public class NvidiaServiceParseRequestConfigTests extends AbstractParseRequestConfigTests {
     public NvidiaServiceParseRequestConfigTests(TestCase testCase) {
         super(NvidiaServiceParameterizedTestConfiguration.createTestConfiguration(), testCase);
+    }
+
+    @ParametersFactory
+    public static Iterable<TestCase[]> testParameters() {
+        return parameters();
     }
 }

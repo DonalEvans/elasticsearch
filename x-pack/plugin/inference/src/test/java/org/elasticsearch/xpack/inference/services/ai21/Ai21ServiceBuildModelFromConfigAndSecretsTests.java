@@ -7,10 +7,17 @@
 
 package org.elasticsearch.xpack.inference.services.ai21;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import org.elasticsearch.xpack.inference.services.AbstractBuildModelFromConfigAndSecretsTests;
 
 public class Ai21ServiceBuildModelFromConfigAndSecretsTests extends AbstractBuildModelFromConfigAndSecretsTests {
     public Ai21ServiceBuildModelFromConfigAndSecretsTests(TestCase testCase) {
         super(Ai21ServiceParameterizedTestConfiguration.createTestConfiguration(), testCase);
+    }
+
+    @ParametersFactory
+    public static Iterable<TestCase[]> testParameters() {
+        return parameters();
     }
 }

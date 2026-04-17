@@ -16,6 +16,7 @@ import org.elasticsearch.inference.ModelConfigurations;
 import org.elasticsearch.inference.ModelSecrets;
 import org.elasticsearch.inference.TaskType;
 import org.elasticsearch.xpack.inference.Utils;
+import org.elasticsearch.xpack.inference.services.amazonbedrock.AmazonBedrockProvider;
 import org.junit.Assume;
 
 import java.util.Arrays;
@@ -73,7 +74,20 @@ public abstract class AbstractBuildModelFromConfigAndSecretsTests extends Abstra
         }
     }
 
-    @ParametersFactory
+    /**
+     * To allow implementing classes to add additional parameters, this method is not annotated with {@link ParametersFactory}. Classes
+     * implementing this abstract class which want to use the standard parameters should have:
+     * <pre>
+     *{@code @ParametersFactory
+     * public static Iterable<TestCase[]> testParameters() {
+     *     return parameters();
+     * }
+     * }
+     * </pre>
+     * The alternative to this approach is needing to add a new test class for every additional parameter (such as for each
+     * {@link AmazonBedrockProvider}), which unnecessarily bloats the number of test files.
+     * @return the default test cases
+     */
     public static Iterable<TestCase[]> parameters() {
         return Arrays.asList(
             new TestCase[][] {

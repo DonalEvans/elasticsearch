@@ -9,12 +9,12 @@ package org.elasticsearch.xpack.inference.services.amazonbedrock;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 
-import org.elasticsearch.xpack.inference.services.AbstractParseRequestConfigTests;
+import org.elasticsearch.xpack.inference.services.AbstractBuildModelFromConfigAndSecretsTests;
 
 import java.util.ArrayList;
 
-public class AmazonBedrockServiceParseRequestConfigTests extends AbstractParseRequestConfigTests {
-    public AmazonBedrockServiceParseRequestConfigTests(AmazonBedrockProvider provider, TestCase testCase) {
+public class AmazonBedrockServiceBuildModelFromConfigAndSecretsTests extends AbstractBuildModelFromConfigAndSecretsTests {
+    public AmazonBedrockServiceBuildModelFromConfigAndSecretsTests(AmazonBedrockProvider provider, TestCase testCase) {
         super(AmazonBedrockServiceParameterizedTestConfiguration.createTestConfiguration(provider), testCase);
     }
 

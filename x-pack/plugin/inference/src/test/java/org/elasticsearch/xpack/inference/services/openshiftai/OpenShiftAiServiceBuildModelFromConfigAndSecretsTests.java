@@ -7,10 +7,17 @@
 
 package org.elasticsearch.xpack.inference.services.openshiftai;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import org.elasticsearch.xpack.inference.services.AbstractBuildModelFromConfigAndSecretsTests;
 
 public class OpenShiftAiServiceBuildModelFromConfigAndSecretsTests extends AbstractBuildModelFromConfigAndSecretsTests {
     public OpenShiftAiServiceBuildModelFromConfigAndSecretsTests(TestCase testCase) {
         super(OpenShiftAiServiceParameterizedTestConfiguration.createTestConfiguration(), testCase);
+    }
+
+    @ParametersFactory
+    public static Iterable<TestCase[]> testParameters() {
+        return parameters();
     }
 }

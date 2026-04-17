@@ -7,10 +7,17 @@
 
 package org.elasticsearch.xpack.inference.services.llama;
 
+import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
+
 import org.elasticsearch.xpack.inference.services.AbstractParseRequestConfigTests;
 
 public class LlamaServiceParseRequestConfigTests extends AbstractParseRequestConfigTests {
     public LlamaServiceParseRequestConfigTests(TestCase testCase) {
         super(LlamaServiceParameterizedTestConfiguration.createTestConfiguration(), testCase);
+    }
+
+    @ParametersFactory
+    public static Iterable<TestCase[]> testParameters() {
+        return parameters();
     }
 }
