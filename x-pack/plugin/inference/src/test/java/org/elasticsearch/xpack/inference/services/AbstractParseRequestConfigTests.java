@@ -12,6 +12,7 @@ import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import org.elasticsearch.ElasticsearchStatusException;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.TestPlainActionFuture;
+import org.elasticsearch.common.TriConsumer;
 import org.elasticsearch.core.Strings;
 import org.elasticsearch.inference.ChunkingSettings;
 import org.elasticsearch.inference.InferenceService;
@@ -19,6 +20,7 @@ import org.elasticsearch.inference.Model;
 import org.elasticsearch.inference.ModelConfigurations;
 import org.elasticsearch.inference.TaskType;
 import org.elasticsearch.rest.RestStatus;
+import org.elasticsearch.xcontent.XContentParseException;
 import org.elasticsearch.xpack.core.inference.chunking.ChunkingSettingsBuilder;
 import org.elasticsearch.xpack.inference.services.amazonbedrock.AmazonBedrockProvider;
 import org.elasticsearch.xpack.inference.services.settings.RateLimitSettings;
@@ -28,7 +30,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 import static org.elasticsearch.xpack.core.inference.chunking.ChunkingSettingsTests.createRandomChunkingSettingsMap;
 import static org.elasticsearch.xpack.inference.Utils.getRequestConfigMap;
@@ -55,7 +56,7 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
         BiFunction<TestConfiguration, Boolean, Map<String, Object>> createRequestConfig,
         ServiceParser serviceParser,
         TaskType expectedTaskType,
-        Function<TestConfiguration, Exception> expectedExceptionProvider,
+        TriConsumer<TestConfiguration, Boolean, TestPlainActionFuture<Model>> expectedExceptionAssertions,
         boolean minimalSettings
     ) {}
 
@@ -71,7 +72,7 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
         private final BiFunction<TestConfiguration, Boolean, Map<String, Object>> createRequestConfig;
         private final ServiceParser serviceParser;
         private final TaskType expectedTaskType;
-        private Function<TestConfiguration, Exception> expectedException;
+        private TriConsumer<TestConfiguration, Boolean, TestPlainActionFuture<Model>> expectedExceptionAssertions;
         private final boolean minimalSettings;
 
         TestCaseBuilder(
@@ -88,13 +89,22 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
             this.minimalSettings = minimalSettings;
         }
 
-        public TestCaseBuilder expectException(Function<TestConfiguration, Exception> expectedException) {
-            this.expectedException = expectedException;
+        public TestCaseBuilder expectException(
+            TriConsumer<TestConfiguration, Boolean, TestPlainActionFuture<Model>> expectedExceptionAssertions
+        ) {
+            this.expectedExceptionAssertions = expectedExceptionAssertions;
             return this;
         }
 
         public TestCase build() {
-            return new TestCase(description, createRequestConfig, serviceParser, expectedTaskType, expectedException, minimalSettings);
+            return new TestCase(
+                description,
+                createRequestConfig,
+                serviceParser,
+                expectedTaskType,
+                expectedExceptionAssertions,
+                minimalSettings
+            );
         }
     }
 
@@ -254,12 +264,8 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
                         // We expect failure, so the expected task type is irrelevant
                         null,
                         true
-                    ).expectException(
-                        t -> new ElasticsearchStatusException(
-                            Strings.format("The [%s] service does not support task type [any]", t.commonConfig().serviceName()),
-                            RestStatus.BAD_REQUEST
-                        )
-                    ).build() },
+                    ).expectException((t, usesParserForTaskSettings, listener) -> assertUnsupportedTaskTypeException(t, listener))
+                        .build() },
                 {
                     new TestCaseBuilder(
                         "Test parsing request config throws when an extra key exists in config",
@@ -282,17 +288,8 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
                         // We expect failure, so the expected task type is irrelevant
                         null,
                         true
-                    ).expectException(
-                        t -> new ElasticsearchStatusException(
-                            Strings.format(
-                                "Configuration contains settings [{%s=%s}] unknown to the [%s] service",
-                                EXTRA_KEY,
-                                EXTRA_VALUE,
-                                t.commonConfig().serviceName()
-                            ),
-                            RestStatus.BAD_REQUEST
-                        )
-                    ).build() },
+                    ).expectException((t, usesParserForTaskSettings, listener) -> assertNonParserExtraValueException(t, listener))
+                        .build() },
                 {
                     new TestCaseBuilder(
                         "Test parsing request config throws when an extra key exists in service settings",
@@ -319,17 +316,8 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
                         // We expect failure, so the expected task type is irrelevant
                         null,
                         true
-                    ).expectException(
-                        t -> new ElasticsearchStatusException(
-                            Strings.format(
-                                "Configuration contains settings [{%s=%s}] unknown to the [%s] service",
-                                EXTRA_KEY,
-                                EXTRA_VALUE,
-                                t.commonConfig().serviceName()
-                            ),
-                            RestStatus.BAD_REQUEST
-                        )
-                    ).build() },
+                    ).expectException((t, usesParserForTaskSettings, listener) -> assertNonParserExtraValueException(t, listener))
+                        .build() },
                 {
                     new TestCaseBuilder(
                         "Test parsing request config throws when an extra key exists in task settings",
@@ -357,17 +345,13 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
                         // We expect failure, so the expected task type is irrelevant
                         null,
                         true
-                    ).expectException(
-                        t -> new ElasticsearchStatusException(
-                            Strings.format(
-                                "Configuration contains settings [{%s=%s}] unknown to the [%s] service",
-                                EXTRA_KEY,
-                                EXTRA_VALUE,
-                                t.commonConfig().serviceName()
-                            ),
-                            RestStatus.BAD_REQUEST
-                        )
-                    ).build() },
+                    ).expectException((t, usesParserForTaskSettings, listener) -> {
+                        if (usesParserForTaskSettings) {
+                            assertParserExtraValueException(t, listener);
+                        } else {
+                            assertNonParserExtraValueException(t, listener);
+                        }
+                    }).build() },
                 {
                     new TestCaseBuilder(
                         "Test parsing request config throws when an extra key exists in rate limit settings",
@@ -394,18 +378,39 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
                         // We expect failure, so the expected task type is irrelevant
                         null,
                         true
-                    ).expectException(
-                        t -> new ElasticsearchStatusException(
-                            Strings.format(
-                                "Configuration contains settings [{%s=%s}] unknown to the [%s] service",
-                                EXTRA_KEY,
-                                EXTRA_VALUE,
-                                t.commonConfig().serviceName()
-                            ),
-                            RestStatus.BAD_REQUEST
-                        )
-                    ).build() } }
+                    ).expectException((t, usesParserForTaskSettings, listener) -> assertNonParserExtraValueException(t, listener))
+                        .build() } }
         );
+    }
+
+    private static void assertUnsupportedTaskTypeException(TestConfiguration t, TestPlainActionFuture<Model> listener) {
+        var exception = expectThrows(ElasticsearchStatusException.class, () -> listener.actionGet(TEST_REQUEST_TIMEOUT));
+        assertThat(
+            exception.getMessage(),
+            is(Strings.format("The [%s] service does not support task type [any]", t.commonConfig().serviceName()))
+        );
+        assertThat(exception.status(), is(RestStatus.BAD_REQUEST));
+    }
+
+    private static void assertNonParserExtraValueException(TestConfiguration t, TestPlainActionFuture<Model> listener) {
+        var exception = expectThrows(ElasticsearchStatusException.class, () -> listener.actionGet(TEST_REQUEST_TIMEOUT));
+        assertThat(
+            exception.getMessage(),
+            is(
+                Strings.format(
+                    "Configuration contains settings [{%s=%s}] unknown to the [%s] service",
+                    EXTRA_KEY,
+                    EXTRA_VALUE,
+                    t.commonConfig().serviceName()
+                )
+            )
+        );
+        assertThat(exception.status(), is(RestStatus.BAD_REQUEST));
+    }
+
+    private static void assertParserExtraValueException(TestConfiguration t, TestPlainActionFuture<Model> listener) {
+        var exception = expectThrows(XContentParseException.class, () -> listener.actionGet(TEST_REQUEST_TIMEOUT));
+        assertThat(exception.getMessage(), containsString(Strings.format("unknown field [%s]", EXTRA_KEY)));
     }
 
     private static Map<String, Object> requestConfig(
@@ -470,19 +475,16 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
         try (var service = commonConfig.createService(threadPool, clientManager)) {
             testCase.serviceParser.parseRequestConfigs(new ServiceParserParams(service, requestConfig, testConfiguration), listener);
 
-            if (testCase.expectedExceptionProvider != null) {
-                assertFailedParse(listener);
+            if (testCase.expectedExceptionAssertions != null) {
+                assertFailedParse(service, listener);
             } else {
                 assertSuccessfulParse(listener, expectedChunkingSettings);
             }
         }
     }
 
-    private void assertFailedParse(TestPlainActionFuture<Model> listener) {
-        var expectedException = testCase.expectedExceptionProvider.apply(testConfiguration);
-        var exception = expectThrows(expectedException.getClass(), () -> listener.actionGet(TEST_REQUEST_TIMEOUT));
-
-        assertThat(exception.getMessage(), containsString(expectedException.getMessage()));
+    private void assertFailedParse(SenderService<?> service, TestPlainActionFuture<Model> listener) {
+        testCase.expectedExceptionAssertions.apply(testConfiguration, service.usesParserForTaskSettings(), listener);
     }
 
     private void assertSuccessfulParse(TestPlainActionFuture<Model> listener, ChunkingSettings expectedChunkingSettings) {
