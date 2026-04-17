@@ -117,10 +117,7 @@ public class AmazonBedrockServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createAllSupportedServiceSettingsMap(
-                    TaskType taskType,
-                    ConfigurationParseContext parseContext
-                ) {
+                protected Map<String, Object> createAllServiceSettingsMap(TaskType taskType, ConfigurationParseContext parseContext) {
                     var serviceSettings = createMinimalServiceSettingsMap(taskType);
                     RateLimitSettingsTests.addRateLimitSettingsToMap(serviceSettings, REQUESTS_PER_MINUTE_VALUE);
                     if (taskType.equals(TaskType.TEXT_EMBEDDING)) {
@@ -161,7 +158,7 @@ public class AmazonBedrockServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createTaskSettingsMap(TaskType taskType) {
+                protected Map<String, Object> createAllTaskSettingsMap(TaskType taskType) {
                     var taskSettingsMap = new HashMap<String, Object>();
                     if (taskType.equals(TaskType.TEXT_EMBEDDING) && provider.equals(COHERE)) {
                         taskSettingsMap.put(TRUNCATE_FIELD, TRUNCATION_VALUE.toString());

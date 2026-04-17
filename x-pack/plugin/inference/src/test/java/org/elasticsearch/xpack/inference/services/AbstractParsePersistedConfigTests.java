@@ -28,7 +28,6 @@ import java.util.function.BiFunction;
 
 import static org.elasticsearch.xpack.core.inference.chunking.ChunkingSettingsTests.createRandomChunkingSettingsMap;
 import static org.elasticsearch.xpack.inference.Utils.getPersistedConfigMap;
-import static org.elasticsearch.xpack.inference.services.AbstractInferenceServiceBaseTests.*;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
@@ -278,7 +277,7 @@ public abstract class AbstractParsePersistedConfigTests extends AbstractInferenc
                                         testConfig.commonConfig().defaultTaskType(),
                                         ConfigurationParseContext.PERSISTENT
                                     ),
-                                new HashMap<>(),
+                                testConfig.commonConfig().createMinimalTaskSettingsMap(testConfig.commonConfig().defaultTaskType()),
                                 null
                             );
                             persistedConfigMap.config().put("extra_key", "value");
@@ -296,14 +295,20 @@ public abstract class AbstractParsePersistedConfigTests extends AbstractInferenc
                                 );
                             serviceSettings.put("extra_key", "value");
 
-                            return getPersistedConfigMap(serviceSettings, new HashMap<>(), null);
+                            return getPersistedConfigMap(
+                                serviceSettings,
+                                testConfig.commonConfig().createMinimalTaskSettingsMap(testConfig.commonConfig().defaultTaskType()),
+                                null
+                            );
                         }
                     ).build() },
                 {
                     new TestCaseBuilder(
                         "Test parsing persisted config does not throw when an extra key exists in task settings",
                         (testConfig, minimalSettings) -> {
-                            var taskSettingsMap = new HashMap<String, Object>(Map.of("extra_key", "value"));
+                            var taskSettingsMap = testConfig.commonConfig()
+                                .createMinimalTaskSettingsMap(testConfig.commonConfig().defaultTaskType());
+                            taskSettingsMap.put("extra_key", "value");
 
                             return getPersistedConfigMap(
                                 testConfig.commonConfig()
@@ -329,7 +334,7 @@ public abstract class AbstractParsePersistedConfigTests extends AbstractInferenc
                                         testConfig.commonConfig().defaultTaskType(),
                                         ConfigurationParseContext.PERSISTENT
                                     ),
-                                new HashMap<>(),
+                                testConfig.commonConfig().createMinimalTaskSettingsMap(testConfig.commonConfig().defaultTaskType()),
                                 secretSettingsMap
                             );
                         }
@@ -345,7 +350,11 @@ public abstract class AbstractParsePersistedConfigTests extends AbstractInferenc
                                 );
                             serviceSettings.put(RateLimitSettings.FIELD_NAME, new HashMap<>(Map.of("extra_key", "value")));
 
-                            return getPersistedConfigMap(serviceSettings, new HashMap<>(), null);
+                            return getPersistedConfigMap(
+                                serviceSettings,
+                                testConfig.commonConfig().createMinimalTaskSettingsMap(testConfig.commonConfig().defaultTaskType()),
+                                null
+                            );
                         }
                     ).build() }, }
         );
@@ -362,11 +371,10 @@ public abstract class AbstractParsePersistedConfigTests extends AbstractInferenc
             if (minimalSettings) {
                 serviceSettingsMap = testConfig.commonConfig()
                     .createMinimalServiceSettingsMap(taskType, ConfigurationParseContext.PERSISTENT);
-                taskSettingsMap = new HashMap<>();
+                taskSettingsMap = testConfig.commonConfig().createMinimalTaskSettingsMap(taskType);
             } else {
-                serviceSettingsMap = testConfig.commonConfig()
-                    .createAllSupportedServiceSettingsMap(taskType, ConfigurationParseContext.PERSISTENT);
-                taskSettingsMap = testConfig.commonConfig().createTaskSettingsMap(taskType);
+                serviceSettingsMap = testConfig.commonConfig().createAllServiceSettingsMap(taskType, ConfigurationParseContext.PERSISTENT);
+                taskSettingsMap = testConfig.commonConfig().createAllTaskSettingsMap(taskType);
             }
             return getPersistedConfigMap(
                 serviceSettingsMap,

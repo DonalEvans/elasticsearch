@@ -85,10 +85,7 @@ public class AlibabaCloudSearchServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createAllSupportedServiceSettingsMap(
-                    TaskType taskType,
-                    ConfigurationParseContext parseContext
-                ) {
+                protected Map<String, Object> createAllServiceSettingsMap(TaskType taskType, ConfigurationParseContext parseContext) {
                     var minimalSettings = createMinimalServiceSettingsMap(taskType);
                     RateLimitSettingsTests.addRateLimitSettingsToMap(minimalSettings, REQUESTS_PER_MINUTE_VALUE);
                     minimalSettings.put(HTTP_SCHEMA_NAME, HTTP_SCHEMA_VALUE);
@@ -132,7 +129,7 @@ public class AlibabaCloudSearchServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createTaskSettingsMap(TaskType taskType) {
+                protected Map<String, Object> createAllTaskSettingsMap(TaskType taskType) {
                     var taskSettingsMap = new HashMap<String, Object>();
                     if (taskType.equals(TaskType.SPARSE_EMBEDDING) || taskType.equals(TaskType.TEXT_EMBEDDING)) {
                         if (taskType.equals(TaskType.SPARSE_EMBEDDING)) {

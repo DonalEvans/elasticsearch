@@ -63,10 +63,7 @@ public class Ai21ServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createAllSupportedServiceSettingsMap(
-                    TaskType taskType,
-                    ConfigurationParseContext parseContext
-                ) {
+                protected Map<String, Object> createAllServiceSettingsMap(TaskType taskType, ConfigurationParseContext parseContext) {
                     var minimalSettings = createMinimalServiceSettingsMap(taskType);
                     RateLimitSettingsTests.addRateLimitSettingsToMap(minimalSettings, REQUESTS_PER_MINUTE_VALUE);
                     return minimalSettings;
@@ -78,7 +75,7 @@ public class Ai21ServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createTaskSettingsMap(TaskType taskType) {
+                protected Map<String, Object> createAllTaskSettingsMap(TaskType taskType) {
                     return new HashMap<>();
                 }
 

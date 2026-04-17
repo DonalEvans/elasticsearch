@@ -99,10 +99,7 @@ public class OpenShiftAiServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createAllSupportedServiceSettingsMap(
-                    TaskType taskType,
-                    ConfigurationParseContext parseContext
-                ) {
+                protected Map<String, Object> createAllServiceSettingsMap(TaskType taskType, ConfigurationParseContext parseContext) {
                     var serviceSettings = createMinimalServiceSettingsMap(taskType, parseContext);
                     RateLimitSettingsTests.addRateLimitSettingsToMap(serviceSettings, REQUESTS_PER_MINUTE);
 
@@ -144,7 +141,7 @@ public class OpenShiftAiServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createTaskSettingsMap(TaskType taskType) {
+                protected Map<String, Object> createAllTaskSettingsMap(TaskType taskType) {
                     HashMap<String, Object> taskSettingsMap = new HashMap<>();
                     if (taskType == RERANK) {
                         taskSettingsMap.put(RETURN_DOCUMENTS, RETURN_DOCUMENTS_VALUE);

@@ -292,7 +292,7 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
 
                             return getRequestConfigMap(
                                 serviceSettings,
-                                testConfig.commonConfig().createTaskSettingsMap(testConfig.commonConfig().defaultTaskType()),
+                                testConfig.commonConfig().createAllTaskSettingsMap(testConfig.commonConfig().defaultTaskType()),
                                 testConfig.commonConfig().createSecretSettingsMap()
                             );
                         },
@@ -321,7 +321,7 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
                         "Test parsing request config throws when an extra key exists in task settings",
                         (testConfig, minimalSettings) -> {
                             var taskSettingsMap = testConfig.commonConfig()
-                                .createTaskSettingsMap(testConfig.commonConfig().defaultTaskType());
+                                .createAllTaskSettingsMap(testConfig.commonConfig().defaultTaskType());
                             taskSettingsMap.put(EXTRA_KEY, EXTRA_VALUE);
 
                             return getRequestConfigMap(
@@ -365,7 +365,11 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
                                 );
                             serviceSettings.put(RateLimitSettings.FIELD_NAME, new HashMap<>(Map.of(EXTRA_KEY, EXTRA_VALUE)));
 
-                            return getRequestConfigMap(serviceSettings, Map.of(), testConfig.commonConfig().createSecretSettingsMap());
+                            return getRequestConfigMap(
+                                serviceSettings,
+                                testConfig.commonConfig().createAllTaskSettingsMap(testConfig.commonConfig().defaultTaskType()),
+                                testConfig.commonConfig().createSecretSettingsMap()
+                            );
                         },
                         (params, listener) -> params.service.parseRequestConfig(
                             INFERENCE_ENTITY_ID,
@@ -402,10 +406,10 @@ public abstract class AbstractParseRequestConfigTests extends AbstractInferenceS
 
         if (minimalSettings) {
             serviceSettingsMap = commonConfig.createMinimalServiceSettingsMap(taskType, ConfigurationParseContext.REQUEST);
-            taskSettingsMap = new HashMap<>();
+            taskSettingsMap = commonConfig.createMinimalTaskSettingsMap(taskType);
         } else {
-            serviceSettingsMap = commonConfig.createAllSupportedServiceSettingsMap(taskType, ConfigurationParseContext.REQUEST);
-            taskSettingsMap = commonConfig.createTaskSettingsMap(taskType);
+            serviceSettingsMap = commonConfig.createAllServiceSettingsMap(taskType, ConfigurationParseContext.REQUEST);
+            taskSettingsMap = commonConfig.createAllTaskSettingsMap(taskType);
         }
 
         var requestConfigMap = getRequestConfigMap(serviceSettingsMap, taskSettingsMap, commonConfig.createSecretSettingsMap());

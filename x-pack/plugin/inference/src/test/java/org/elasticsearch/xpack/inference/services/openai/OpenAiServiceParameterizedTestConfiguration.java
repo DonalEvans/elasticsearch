@@ -83,10 +83,7 @@ public class OpenAiServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createAllSupportedServiceSettingsMap(
-                    TaskType taskType,
-                    ConfigurationParseContext parseContext
-                ) {
+                protected Map<String, Object> createAllServiceSettingsMap(TaskType taskType, ConfigurationParseContext parseContext) {
                     var serviceSettings = createMinimalServiceSettingsMap(taskType);
                     RateLimitSettingsTests.addRateLimitSettingsToMap(serviceSettings, REQUESTS_PER_MINUTE);
                     serviceSettings.putAll(
@@ -138,7 +135,7 @@ public class OpenAiServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createTaskSettingsMap(TaskType taskType) {
+                protected Map<String, Object> createAllTaskSettingsMap(TaskType taskType) {
                     return new HashMap<>(Map.of(OpenAiServiceFields.USER, USER_VALUE, OpenAiServiceFields.HEADERS, HEADERS_VALUE));
                 }
 

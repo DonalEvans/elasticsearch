@@ -97,10 +97,7 @@ public class NvidiaServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createAllSupportedServiceSettingsMap(
-                    TaskType taskType,
-                    ConfigurationParseContext parseContext
-                ) {
+                protected Map<String, Object> createAllServiceSettingsMap(TaskType taskType, ConfigurationParseContext parseContext) {
                     var serviceSettings = createMinimalServiceSettingsMap(taskType);
                     serviceSettings.put(ServiceFields.URL, URL_VALUE);
                     RateLimitSettingsTests.addRateLimitSettingsToMap(serviceSettings, REQUESTS_PER_MINUTE);
@@ -152,7 +149,7 @@ public class NvidiaServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createTaskSettingsMap(TaskType taskType) {
+                protected Map<String, Object> createAllTaskSettingsMap(TaskType taskType) {
                     if (taskType.equals(TEXT_EMBEDDING)) {
                         return new HashMap<>(
                             Map.of(INPUT_TYPE_FIELD_NAME, INPUT_TYPE_VALUE.toString(), TRUNCATE_FIELD_NAME, TRUNCATION_VALUE.toString())

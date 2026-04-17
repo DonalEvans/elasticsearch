@@ -23,6 +23,7 @@ import org.junit.After;
 import org.junit.Before;
 
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -106,7 +107,7 @@ public abstract class AbstractInferenceServiceBaseTests extends ESTestCase {
         protected abstract SenderService<?> createService(ThreadPool threadPool, HttpClientManager clientManager);
 
         /**
-         * Returns a map containing only those service settings which are necessary to create a model with the given task type
+         * Returns a map containing only those service settings which are necessary to create a model with the given task type.
          *
          * @param taskType the task type of the model to create
          * @return a minimal map of service settings
@@ -117,7 +118,7 @@ public abstract class AbstractInferenceServiceBaseTests extends ESTestCase {
          * Override as necessary for services which produce different service settings depending on the parse context.
          * <p>
          * This should be implemented to return a map containing only those service settings which are necessary to create a model with the
-         * given task type
+         * given task type.
          *
          * @param taskType the task type of the model to create
          * @param parseContext the parse context
@@ -129,16 +130,13 @@ public abstract class AbstractInferenceServiceBaseTests extends ESTestCase {
 
         /**
          * This should be implemented to return a map containing all valid service settings for a model with the given task type and
-         * parse context
+         * parse context.
          *
          * @param taskType     the task type of the model to create
          * @param parseContext the parse context, which may affect which fields are supported in the service settings
          * @return a map of all supported service settings for the given task type and parse context
          */
-        protected abstract Map<String, Object> createAllSupportedServiceSettingsMap(
-            TaskType taskType,
-            ConfigurationParseContext parseContext
-        );
+        protected abstract Map<String, Object> createAllServiceSettingsMap(TaskType taskType, ConfigurationParseContext parseContext);
 
         /**
          * This should be implemented to return a {@link ServiceSettings} for the specified {@link TaskType} and
@@ -155,7 +153,7 @@ public abstract class AbstractInferenceServiceBaseTests extends ESTestCase {
         );
 
         /**
-         * This should be implemented to return an empty {@link TaskSettings} implementation for the specified {@link TaskType}
+         * This should be implemented to return an empty {@link TaskSettings} implementation for the specified {@link TaskType}.
          *
          * @param taskType the {@link TaskType} of the returned {@link TaskSettings}
          * @return an {@link TaskSettings} of the correct class
@@ -165,12 +163,24 @@ public abstract class AbstractInferenceServiceBaseTests extends ESTestCase {
         protected abstract ModelSecrets createModelSecrets();
 
         /**
-         * This should be implemented to return a <B>mutable</B> map containing all supported task settings for the given task type
+         * Override as necessary for services which have required task settings.
+         * <p>
+         * This should be implemented to return a <B>mutable</B> map containing any required task settings for the given task type.
+         *
+         * @param taskType the task type to create task settings for
+         * @return a map containing required task settings for the given task type
+         */
+        protected Map<String, Object> createMinimalTaskSettingsMap(TaskType taskType) {
+            return new HashMap<>();
+        }
+
+        /**
+         * This should be implemented to return a <B>mutable</B> map containing all supported task settings for the given task type.
          *
          * @param taskType the task type to create task settings for
          * @return a map containing all supported task settings for the given task type
          */
-        protected abstract Map<String, Object> createTaskSettingsMap(TaskType taskType);
+        protected abstract Map<String, Object> createAllTaskSettingsMap(TaskType taskType);
 
         protected abstract Map<String, Object> createSecretSettingsMap();
 

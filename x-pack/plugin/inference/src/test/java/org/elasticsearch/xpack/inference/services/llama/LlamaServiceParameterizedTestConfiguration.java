@@ -75,10 +75,7 @@ public class LlamaServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createAllSupportedServiceSettingsMap(
-                    TaskType taskType,
-                    ConfigurationParseContext parseContext
-                ) {
+                protected Map<String, Object> createAllServiceSettingsMap(TaskType taskType, ConfigurationParseContext parseContext) {
                     var settingsMap = createMinimalServiceSettingsMap(taskType);
                     RateLimitSettingsTests.addRateLimitSettingsToMap(settingsMap, REQUESTS_PER_MINUTE);
 
@@ -124,7 +121,7 @@ public class LlamaServiceParameterizedTestConfiguration {
                 }
 
                 @Override
-                protected Map<String, Object> createTaskSettingsMap(TaskType taskType) {
+                protected Map<String, Object> createAllTaskSettingsMap(TaskType taskType) {
                     return new HashMap<>();
                 }
 
