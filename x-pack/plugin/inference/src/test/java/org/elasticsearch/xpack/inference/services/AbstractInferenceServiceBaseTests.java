@@ -8,12 +8,10 @@
 package org.elasticsearch.xpack.inference.services;
 
 import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.core.Nullable;
 import org.elasticsearch.inference.Model;
 import org.elasticsearch.inference.ModelConfigurations;
 import org.elasticsearch.inference.ModelSecrets;
 import org.elasticsearch.inference.ServiceSettings;
-import org.elasticsearch.inference.SimilarityMeasure;
 import org.elasticsearch.inference.TaskSettings;
 import org.elasticsearch.inference.TaskType;
 import org.elasticsearch.test.ESTestCase;
@@ -211,28 +209,4 @@ public abstract class AbstractInferenceServiceBaseTests extends ESTestCase {
 
         protected abstract EnumSet<TaskType> supportedStreamingTasks();
     }
-
-    /**
-     * Configurations specific to the {@link SenderService#updateModelWithEmbeddingDetails(Model, int)} tests
-     */
-    public abstract static class UpdateModelConfiguration {
-
-        public boolean isEnabled() {
-            return true;
-        }
-
-        protected abstract Model createEmbeddingModel(@Nullable SimilarityMeasure similarityMeasure, TaskType taskType);
-    }
-
-    private static final UpdateModelConfiguration DISABLED_UPDATE_MODEL_TESTS = new UpdateModelConfiguration() {
-        @Override
-        public boolean isEnabled() {
-            return false;
-        }
-
-        @Override
-        protected Model createEmbeddingModel(SimilarityMeasure similarityMeasure, TaskType taskType) {
-            throw new UnsupportedOperationException("Update model tests are disabled");
-        }
-    };
 }

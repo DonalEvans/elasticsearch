@@ -32,8 +32,6 @@ import static org.elasticsearch.xpack.inference.services.amazonbedrock.AmazonBed
 
 public abstract class AmazonBedrockServiceSettings extends FilteredXContentObject implements ServiceSettings {
 
-    protected static final String AMAZON_BEDROCK_BASE_NAME = "amazon_bedrock";
-
     protected final String region;
     protected final String model;
     protected final AmazonBedrockProvider provider;
@@ -65,7 +63,7 @@ public abstract class AmazonBedrockServiceSettings extends FilteredXContentObjec
             map,
             DEFAULT_RATE_LIMIT_SETTINGS,
             validationException,
-            AMAZON_BEDROCK_BASE_NAME,
+            AmazonBedrockService.NAME,
             context
         );
 
@@ -80,7 +78,7 @@ public abstract class AmazonBedrockServiceSettings extends FilteredXContentObjec
             serviceSettings,
             this.rateLimitSettings,
             validationException,
-            AMAZON_BEDROCK_BASE_NAME,
+            AmazonBedrockService.NAME,
             ConfigurationParseContext.REQUEST
         );
 

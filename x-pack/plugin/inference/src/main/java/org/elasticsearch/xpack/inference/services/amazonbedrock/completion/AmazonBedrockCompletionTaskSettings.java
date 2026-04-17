@@ -36,7 +36,7 @@ public class AmazonBedrockCompletionTaskSettings implements TaskSettings {
     static final AmazonBedrockCompletionTaskSettings EMPTY_SETTINGS = new AmazonBedrockCompletionTaskSettings(null, null, null, null);
 
     public static AmazonBedrockCompletionTaskSettings fromMap(Map<String, Object> settings) {
-        if (settings.isEmpty()) {
+        if (settings == null || settings.isEmpty()) {
             return EMPTY_SETTINGS;
         }
 
