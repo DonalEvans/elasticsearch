@@ -7,15 +7,12 @@
 
 package org.elasticsearch.xpack.inference.services.alibabacloudsearch;
 
-import org.elasticsearch.ElasticsearchStatusException;
-import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.support.PlainActionFuture;
 import org.elasticsearch.common.ValidationException;
 import org.elasticsearch.common.bytes.BytesArray;
 import org.elasticsearch.common.bytes.BytesReference;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentHelper;
-import org.elasticsearch.core.Strings;
 import org.elasticsearch.core.TimeValue;
 import org.elasticsearch.inference.ChunkInferenceInput;
 import org.elasticsearch.inference.ChunkedInference;
@@ -26,12 +23,9 @@ import org.elasticsearch.inference.InferenceServiceResults;
 import org.elasticsearch.inference.InputType;
 import org.elasticsearch.inference.Model;
 import org.elasticsearch.inference.ModelConfigurations;
-import org.elasticsearch.inference.ModelSecrets;
 import org.elasticsearch.inference.RerankingInferenceService;
-import org.elasticsearch.inference.ServiceSettings;
 import org.elasticsearch.inference.SimilarityMeasure;
 import org.elasticsearch.inference.TaskType;
-import org.elasticsearch.inference.UnparsedModel;
 import org.elasticsearch.threadpool.ThreadPool;
 import org.elasticsearch.xcontent.ToXContent;
 import org.elasticsearch.xcontent.XContentType;
@@ -51,19 +45,11 @@ import org.elasticsearch.xpack.inference.services.ConfigurationParseContext;
 import org.elasticsearch.xpack.inference.services.InferenceServiceTestCase;
 import org.elasticsearch.xpack.inference.services.ServiceFields;
 import org.elasticsearch.xpack.inference.services.alibabacloudsearch.action.AlibabaCloudSearchActionVisitor;
-import org.elasticsearch.xpack.inference.services.alibabacloudsearch.completion.AlibabaCloudSearchCompletionModelTests;
-import org.elasticsearch.xpack.inference.services.alibabacloudsearch.completion.AlibabaCloudSearchCompletionServiceSettingsTests;
-import org.elasticsearch.xpack.inference.services.alibabacloudsearch.completion.AlibabaCloudSearchCompletionTaskSettingsTests;
 import org.elasticsearch.xpack.inference.services.alibabacloudsearch.embeddings.AlibabaCloudSearchEmbeddingsModel;
 import org.elasticsearch.xpack.inference.services.alibabacloudsearch.embeddings.AlibabaCloudSearchEmbeddingsModelTests;
 import org.elasticsearch.xpack.inference.services.alibabacloudsearch.embeddings.AlibabaCloudSearchEmbeddingsServiceSettingsTests;
-import org.elasticsearch.xpack.inference.services.alibabacloudsearch.embeddings.AlibabaCloudSearchEmbeddingsTaskSettingsTests;
 import org.elasticsearch.xpack.inference.services.alibabacloudsearch.request.AlibabaCloudSearchUtils;
-import org.elasticsearch.xpack.inference.services.alibabacloudsearch.rerank.AlibabaCloudSearchRerankModel;
 import org.elasticsearch.xpack.inference.services.alibabacloudsearch.sparse.AlibabaCloudSearchSparseModel;
-import org.elasticsearch.xpack.inference.services.alibabacloudsearch.sparse.AlibabaCloudSearchSparseModelTests;
-import org.elasticsearch.xpack.inference.services.alibabacloudsearch.sparse.AlibabaCloudSearchSparseServiceSettingsTests;
-import org.elasticsearch.xpack.inference.services.alibabacloudsearch.sparse.AlibabaCloudSearchSparseTaskSettingsTests;
 import org.junit.After;
 import org.junit.Before;
 
@@ -76,13 +62,10 @@ import java.util.concurrent.TimeUnit;
 
 import static org.elasticsearch.common.xcontent.XContentHelper.toXContent;
 import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertToXContentEquivalent;
-import static org.elasticsearch.xpack.core.inference.chunking.ChunkingSettingsTests.createRandomChunkingSettingsMap;
-import static org.elasticsearch.xpack.inference.Utils.getPersistedConfigMap;
 import static org.elasticsearch.xpack.inference.Utils.inferenceUtilityExecutors;
 import static org.elasticsearch.xpack.inference.Utils.mockClusterServiceEmpty;
 import static org.elasticsearch.xpack.inference.services.ServiceComponentsTests.createWithEmptySettings;
 import static org.elasticsearch.xpack.inference.services.ServiceFields.SIMILARITY;
-import static org.elasticsearch.xpack.inference.services.settings.DefaultSecretSettingsTests.getSecretSettingsMap;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
@@ -91,7 +74,6 @@ import static org.mockito.Mockito.mock;
 
 public class AlibabaCloudSearchServiceTests extends InferenceServiceTestCase {
     private static final TimeValue TIMEOUT = new TimeValue(30, TimeUnit.SECONDS);
-    private static final String INFERENCE_ENTITY_ID_VALUE = "some_inference_id";
     private static final String HOST_VALUE = "host";
     private static final String WORKSPACE_NAME_VALUE = "default";
     private static final String API_KEY_VALUE = "secret";
@@ -109,251 +91,6 @@ public class AlibabaCloudSearchServiceTests extends InferenceServiceTestCase {
     public void shutdown() throws IOException {
         clientManager.close();
         terminate(threadPool);
-    }
-
-    public void testParseRequestConfig_CreatesAnEmbeddingsModel() throws IOException {
-        try (
-            var service = new AlibabaCloudSearchService(
-                mock(HttpRequestSender.Factory.class),
-                createWithEmptySettings(threadPool),
-                mockClusterServiceEmpty()
-            )
-        ) {
-            ActionListener<Model> modelVerificationListener = ActionListener.wrap(model -> {
-                assertThat(model, instanceOf(AlibabaCloudSearchEmbeddingsModel.class));
-
-                var embeddingsModel = (AlibabaCloudSearchEmbeddingsModel) model;
-                assertThat(embeddingsModel.getServiceSettings().getCommonSettings().modelId(), is(SERVICE_ID_VALUE));
-                assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getHost(), is(HOST_VALUE));
-                assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getWorkspaceName(), is(WORKSPACE_NAME_VALUE));
-                assertThat(embeddingsModel.getSecretSettings().apiKey().toString(), is(API_KEY_VALUE));
-            }, e -> fail("Model parsing should have succeeded " + e.getMessage()));
-
-            service.parseRequestConfig(
-                "id",
-                TaskType.TEXT_EMBEDDING,
-                getRequestConfigMap(
-                    AlibabaCloudSearchEmbeddingsServiceSettingsTests.getServiceSettingsMap(
-                        SERVICE_ID_VALUE,
-                        HOST_VALUE,
-                        WORKSPACE_NAME_VALUE
-                    ),
-                    AlibabaCloudSearchEmbeddingsTaskSettingsTests.getTaskSettingsMap(null),
-                    getSecretSettingsMap(API_KEY_VALUE)
-                ),
-                modelVerificationListener
-            );
-        }
-    }
-
-    public void testParseRequestConfig_CreatesAnEmbeddingsModelWhenChunkingSettingsProvided() throws IOException {
-        try (
-            var service = new AlibabaCloudSearchService(
-                mock(HttpRequestSender.Factory.class),
-                createWithEmptySettings(threadPool),
-                mockClusterServiceEmpty()
-            )
-        ) {
-            ActionListener<Model> modelVerificationListener = ActionListener.wrap(model -> {
-                assertThat(model, instanceOf(AlibabaCloudSearchEmbeddingsModel.class));
-
-                var embeddingsModel = (AlibabaCloudSearchEmbeddingsModel) model;
-                assertThat(embeddingsModel.getServiceSettings().getCommonSettings().modelId(), is(SERVICE_ID_VALUE));
-                assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getHost(), is(HOST_VALUE));
-                assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getWorkspaceName(), is(WORKSPACE_NAME_VALUE));
-                assertThat(embeddingsModel.getConfigurations().getChunkingSettings(), instanceOf(ChunkingSettings.class));
-                assertThat(embeddingsModel.getSecretSettings().apiKey().toString(), is(API_KEY_VALUE));
-            }, e -> fail("Model parsing should have succeeded " + e.getMessage()));
-
-            service.parseRequestConfig(
-                "id",
-                TaskType.TEXT_EMBEDDING,
-                getRequestConfigMap(
-                    AlibabaCloudSearchEmbeddingsServiceSettingsTests.getServiceSettingsMap(
-                        SERVICE_ID_VALUE,
-                        HOST_VALUE,
-                        WORKSPACE_NAME_VALUE
-                    ),
-                    AlibabaCloudSearchEmbeddingsTaskSettingsTests.getTaskSettingsMap(null),
-                    createRandomChunkingSettingsMap(),
-                    getSecretSettingsMap(API_KEY_VALUE)
-                ),
-                modelVerificationListener
-            );
-        }
-    }
-
-    public void testParseRequestConfig_CreatesAnEmbeddingsModelWhenChunkingSettingsNotProvided() throws IOException {
-        try (
-            var service = new AlibabaCloudSearchService(
-                mock(HttpRequestSender.Factory.class),
-                createWithEmptySettings(threadPool),
-                mockClusterServiceEmpty()
-            )
-        ) {
-            ActionListener<Model> modelVerificationListener = ActionListener.wrap(model -> {
-                assertThat(model, instanceOf(AlibabaCloudSearchEmbeddingsModel.class));
-
-                var embeddingsModel = (AlibabaCloudSearchEmbeddingsModel) model;
-                assertThat(embeddingsModel.getServiceSettings().getCommonSettings().modelId(), is(SERVICE_ID_VALUE));
-                assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getHost(), is(HOST_VALUE));
-                assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getWorkspaceName(), is(WORKSPACE_NAME_VALUE));
-                assertThat(embeddingsModel.getConfigurations().getChunkingSettings(), instanceOf(ChunkingSettings.class));
-                assertThat(embeddingsModel.getSecretSettings().apiKey().toString(), is(API_KEY_VALUE));
-            }, e -> fail("Model parsing should have succeeded " + e.getMessage()));
-
-            service.parseRequestConfig(
-                "id",
-                TaskType.TEXT_EMBEDDING,
-                getRequestConfigMap(
-                    AlibabaCloudSearchEmbeddingsServiceSettingsTests.getServiceSettingsMap(
-                        SERVICE_ID_VALUE,
-                        HOST_VALUE,
-                        WORKSPACE_NAME_VALUE
-                    ),
-                    AlibabaCloudSearchEmbeddingsTaskSettingsTests.getTaskSettingsMap(null),
-                    getSecretSettingsMap(API_KEY_VALUE)
-                ),
-                modelVerificationListener
-            );
-        }
-    }
-
-    public void testParsePersistedConfig_CreatesAnEmbeddingsModelWhenChunkingSettingsProvided() throws IOException {
-        try (
-            var service = new AlibabaCloudSearchService(
-                mock(HttpRequestSender.Factory.class),
-                createWithEmptySettings(threadPool),
-                mockClusterServiceEmpty()
-            )
-        ) {
-            var model = service.parsePersistedConfig(
-                new UnparsedModel(
-                    "id",
-                    TaskType.TEXT_EMBEDDING,
-                    AlibabaCloudSearchService.NAME,
-                    getPersistedConfigMap(
-                        AlibabaCloudSearchEmbeddingsServiceSettingsTests.getServiceSettingsMap(
-                            SERVICE_ID_VALUE,
-                            HOST_VALUE,
-                            WORKSPACE_NAME_VALUE
-                        ),
-                        AlibabaCloudSearchEmbeddingsTaskSettingsTests.getTaskSettingsMap(null),
-                        createRandomChunkingSettingsMap()
-                    ).config(),
-                    null
-                )
-            );
-
-            assertThat(model, instanceOf(AlibabaCloudSearchEmbeddingsModel.class));
-            var embeddingsModel = (AlibabaCloudSearchEmbeddingsModel) model;
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().modelId(), is(SERVICE_ID_VALUE));
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getHost(), is(HOST_VALUE));
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getWorkspaceName(), is(WORKSPACE_NAME_VALUE));
-            assertThat(embeddingsModel.getConfigurations().getChunkingSettings(), instanceOf(ChunkingSettings.class));
-        }
-    }
-
-    public void testParsePersistedConfig_CreatesAnEmbeddingsModelWhenChunkingSettingsNotProvided() throws IOException {
-        try (
-            var service = new AlibabaCloudSearchService(
-                mock(HttpRequestSender.Factory.class),
-                createWithEmptySettings(threadPool),
-                mockClusterServiceEmpty()
-            )
-        ) {
-            var model = service.parsePersistedConfig(
-                new UnparsedModel(
-                    "id",
-                    TaskType.TEXT_EMBEDDING,
-                    AlibabaCloudSearchService.NAME,
-                    getPersistedConfigMap(
-                        AlibabaCloudSearchEmbeddingsServiceSettingsTests.getServiceSettingsMap(
-                            SERVICE_ID_VALUE,
-                            HOST_VALUE,
-                            WORKSPACE_NAME_VALUE
-                        ),
-                        AlibabaCloudSearchEmbeddingsTaskSettingsTests.getTaskSettingsMap(null)
-                    ).config(),
-                    null
-                )
-            );
-
-            assertThat(model, instanceOf(AlibabaCloudSearchEmbeddingsModel.class));
-            var embeddingsModel = (AlibabaCloudSearchEmbeddingsModel) model;
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().modelId(), is(SERVICE_ID_VALUE));
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getHost(), is(HOST_VALUE));
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getWorkspaceName(), is(WORKSPACE_NAME_VALUE));
-            assertThat(embeddingsModel.getConfigurations().getChunkingSettings(), instanceOf(ChunkingSettings.class));
-        }
-    }
-
-    public void testParsePersistedConfig_WithSecrets_CreatesAnEmbeddingsModelWhenChunkingSettingsProvided() throws IOException {
-        try (
-            var service = new AlibabaCloudSearchService(
-                mock(HttpRequestSender.Factory.class),
-                createWithEmptySettings(threadPool),
-                mockClusterServiceEmpty()
-            )
-        ) {
-            var persistedConfig = getPersistedConfigMap(
-                AlibabaCloudSearchEmbeddingsServiceSettingsTests.getServiceSettingsMap(SERVICE_ID_VALUE, HOST_VALUE, WORKSPACE_NAME_VALUE),
-                AlibabaCloudSearchEmbeddingsTaskSettingsTests.getTaskSettingsMap(null),
-                createRandomChunkingSettingsMap(),
-                getSecretSettingsMap(API_KEY_VALUE)
-            );
-            var model = service.parsePersistedConfig(
-                new UnparsedModel(
-                    "id",
-                    TaskType.TEXT_EMBEDDING,
-                    AlibabaCloudSearchService.NAME,
-                    persistedConfig.config(),
-                    persistedConfig.secrets()
-                )
-            );
-
-            assertThat(model, instanceOf(AlibabaCloudSearchEmbeddingsModel.class));
-            var embeddingsModel = (AlibabaCloudSearchEmbeddingsModel) model;
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().modelId(), is(SERVICE_ID_VALUE));
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getHost(), is(HOST_VALUE));
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getWorkspaceName(), is(WORKSPACE_NAME_VALUE));
-            assertThat(embeddingsModel.getConfigurations().getChunkingSettings(), instanceOf(ChunkingSettings.class));
-            assertThat(embeddingsModel.getSecretSettings().apiKey().toString(), is(API_KEY_VALUE));
-        }
-    }
-
-    public void testParsePersistedConfig_WithSecrets_CreatesAnEmbeddingsModelWhenChunkingSettingsNotProvided() throws IOException {
-        try (
-            var service = new AlibabaCloudSearchService(
-                mock(HttpRequestSender.Factory.class),
-                createWithEmptySettings(threadPool),
-                mockClusterServiceEmpty()
-            )
-        ) {
-            var persistedConfig = getPersistedConfigMap(
-                AlibabaCloudSearchEmbeddingsServiceSettingsTests.getServiceSettingsMap(SERVICE_ID_VALUE, HOST_VALUE, WORKSPACE_NAME_VALUE),
-                AlibabaCloudSearchEmbeddingsTaskSettingsTests.getTaskSettingsMap(null),
-                createRandomChunkingSettingsMap(),
-                getSecretSettingsMap(API_KEY_VALUE)
-            );
-            var model = service.parsePersistedConfig(
-                new UnparsedModel(
-                    "id",
-                    TaskType.TEXT_EMBEDDING,
-                    AlibabaCloudSearchService.NAME,
-                    persistedConfig.config(),
-                    persistedConfig.secrets()
-                )
-            );
-
-            assertThat(model, instanceOf(AlibabaCloudSearchEmbeddingsModel.class));
-            var embeddingsModel = (AlibabaCloudSearchEmbeddingsModel) model;
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().modelId(), is(SERVICE_ID_VALUE));
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getHost(), is(HOST_VALUE));
-            assertThat(embeddingsModel.getServiceSettings().getCommonSettings().getWorkspaceName(), is(WORKSPACE_NAME_VALUE));
-            assertThat(embeddingsModel.getConfigurations().getChunkingSettings(), instanceOf(ChunkingSettings.class));
-            assertThat(embeddingsModel.getSecretSettings().apiKey().toString(), is(API_KEY_VALUE));
-        }
     }
 
     public void testInfer_ThrowsValidationErrorForInvalidInputType_TextEmbedding() throws IOException {
@@ -796,91 +533,4 @@ public class AlibabaCloudSearchServiceTests extends InferenceServiceTestCase {
         return EnumSet.noneOf(TaskType.class);
     }
 
-    public void testBuildModelFromConfigAndSecrets_TextEmbedding() throws IOException {
-        var model = createTestModel(TaskType.TEXT_EMBEDDING);
-        validateModelBuilding(model);
-    }
-
-    public void testBuildModelFromConfigAndSecrets_SparseEmbedding() throws IOException {
-        var model = createTestModel(TaskType.SPARSE_EMBEDDING);
-        validateModelBuilding(model);
-    }
-
-    public void testBuildModelFromConfigAndSecrets_Completion() throws IOException {
-        var model = createTestModel(TaskType.COMPLETION);
-        validateModelBuilding(model);
-    }
-
-    public void testBuildModelFromConfigAndSecrets_Rerank() throws IOException {
-        var model = createTestModel(TaskType.RERANK);
-        validateModelBuilding(model);
-    }
-
-    public void testBuildModelFromConfigAndSecrets_UnsupportedTaskType() throws IOException {
-        var modelConfigurations = new ModelConfigurations(
-            INFERENCE_ENTITY_ID_VALUE,
-            TaskType.CHAT_COMPLETION,
-            AlibabaCloudSearchService.NAME,
-            mock(ServiceSettings.class)
-        );
-        try (var inferenceService = createInferenceService()) {
-            var thrownException = expectThrows(
-                ElasticsearchStatusException.class,
-                () -> inferenceService.buildModelFromConfigAndSecrets(modelConfigurations, mock(ModelSecrets.class))
-            );
-            assertThat(
-                thrownException.getMessage(),
-                is(
-                    Strings.format(
-                        "The [%s] service does not support task type [%s]",
-                        AlibabaCloudSearchService.NAME,
-                        TaskType.CHAT_COMPLETION
-                    )
-                )
-            );
-        }
-    }
-
-    private Model createTestModel(TaskType taskType) {
-        return switch (taskType) {
-            case TEXT_EMBEDDING -> AlibabaCloudSearchEmbeddingsModelTests.createModel(
-                INFERENCE_ENTITY_ID_VALUE,
-                taskType,
-                AlibabaCloudSearchEmbeddingsServiceSettingsTests.getServiceSettingsMap(SERVICE_ID_VALUE, HOST_VALUE, WORKSPACE_NAME_VALUE),
-                AlibabaCloudSearchEmbeddingsTaskSettingsTests.getTaskSettingsMap(null),
-                getSecretSettingsMap(API_KEY_VALUE)
-            );
-            case SPARSE_EMBEDDING -> AlibabaCloudSearchSparseModelTests.createModel(
-                INFERENCE_ENTITY_ID_VALUE,
-                taskType,
-                AlibabaCloudSearchSparseServiceSettingsTests.getServiceSettingsMap(SERVICE_ID_VALUE, HOST_VALUE, WORKSPACE_NAME_VALUE),
-                AlibabaCloudSearchSparseTaskSettingsTests.getTaskSettingsMap(null, null),
-                getSecretSettingsMap(API_KEY_VALUE)
-            );
-            case COMPLETION -> AlibabaCloudSearchCompletionModelTests.createModel(
-                INFERENCE_ENTITY_ID_VALUE,
-                taskType,
-                AlibabaCloudSearchCompletionServiceSettingsTests.getServiceSettingsMap(SERVICE_ID_VALUE, HOST_VALUE, WORKSPACE_NAME_VALUE),
-                AlibabaCloudSearchCompletionTaskSettingsTests.getTaskSettingsMap(null),
-                getSecretSettingsMap(API_KEY_VALUE)
-            );
-            case RERANK -> new AlibabaCloudSearchRerankModel(
-                INFERENCE_ENTITY_ID_VALUE,
-                TaskType.RERANK,
-                AlibabaCloudSearchService.NAME,
-                AlibabaCloudSearchServiceSettingsTests.getServiceSettingsMap(SERVICE_ID_VALUE, HOST_VALUE, WORKSPACE_NAME_VALUE),
-                Map.of(),
-                getSecretSettingsMap(API_KEY_VALUE),
-                ConfigurationParseContext.PERSISTENT
-            );
-            default -> throw new IllegalArgumentException("Unsupported task type: " + taskType);
-        };
-    }
-
-    private void validateModelBuilding(Model model) throws IOException {
-        try (var inferenceService = createInferenceService()) {
-            var resultModel = inferenceService.buildModelFromConfigAndSecrets(model.getConfigurations(), model.getSecrets());
-            assertThat(resultModel, is(model));
-        }
-    }
 }

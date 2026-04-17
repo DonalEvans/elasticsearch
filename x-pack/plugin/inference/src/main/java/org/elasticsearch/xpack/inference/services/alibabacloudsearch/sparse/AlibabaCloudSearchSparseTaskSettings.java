@@ -39,7 +39,7 @@ public class AlibabaCloudSearchSparseTaskSettings implements TaskSettings {
     public static final String NAME = "alibabacloud_search_sparse_embeddings_task_settings";
     public static final AlibabaCloudSearchSparseTaskSettings EMPTY_SETTINGS = new AlibabaCloudSearchSparseTaskSettings(null, null);
     static final String INPUT_TYPE = "input_type";
-    static final String RETURN_TOKEN = "return_token";
+    public static final String RETURN_TOKEN = "return_token";
 
     public static AlibabaCloudSearchSparseTaskSettings fromMap(Map<String, Object> map) {
         if (map == null || map.isEmpty()) {

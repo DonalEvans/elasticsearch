@@ -39,7 +39,7 @@ public class AlibabaCloudSearchEmbeddingsTaskSettings implements TaskSettings {
     public static final AlibabaCloudSearchEmbeddingsTaskSettings EMPTY_SETTINGS = new AlibabaCloudSearchEmbeddingsTaskSettings(
         (InputType) null
     );
-    static final String INPUT_TYPE = "input_type";
+    public static final String INPUT_TYPE = "input_type";
 
     public static AlibabaCloudSearchEmbeddingsTaskSettings fromMap(Map<String, Object> map) {
         if (map == null || map.isEmpty()) {

@@ -81,10 +81,6 @@ public class AlibabaCloudSearchEmbeddingsServiceSettings implements ServiceSetti
         return commonSettings;
     }
 
-    public SimilarityMeasure getSimilarity() {
-        return similarity;
-    }
-
     @Override
     public Integer dimensions() {
         return dimensions;
